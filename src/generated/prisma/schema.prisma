@@ -1,0 +1,93 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Single table approach for site theme customization
+model SiteTheme {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique // e.g., "Default", "Dark", "Custom"
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Navbar specific customization
+  navbarLogo         String  @default("https://devportal.choreo.dev/themes/default/images/logo-black.svg")
+  navbarPrimaryColor String  @default("#303f9f")
+  navbarTextColor    String  @default("#000000")
+  navbarFont         String  @default("Geist, sans-serif")
+  navbarShowAboutUs  Boolean @default(true)
+  navbarShowLanguage Boolean @default(true)
+
+  // Other site theme properties can be added here
+  siteTitle        String?
+  siteDescription  String?
+  heroTitle        String?
+  heroSubtitle     String?
+  primaryBgColor   String?
+  secondaryBgColor String?
+  footerLogo       String?
+  footerText       String?
+  termsUrl         String?
+  privacyUrl       String?
+  supportUrl       String?
+
+  // Relations
+  navItems  NavItem[]
+  languages Language[]
+}
+
+// Navigation menu items - customizable
+model NavItem {
+  id         Int       @id @default(autoincrement())
+  title      String
+  href       String
+  order      Int       @default(99)
+  isActive   Boolean   @default(true)
+  isExternal Boolean   @default(false)
+  icon       String? // Optional icon name
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  theme      SiteTheme @relation(fields: [themeId], references: [id])
+  themeId    Int
+}
+
+// Languages for internationalization
+model Language {
+  id        Int       @id @default(autoincrement())
+  name      String // e.g., "English", "Español"
+  code      String    @unique // e.g., "en", "es"
+  isActive  Boolean   @default(true)
+  isDefault Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  theme     SiteTheme @relation(fields: [themeId], references: [id])
+  themeId   Int
+}
+
+// Users table for authentication
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String?
+  password  String // Hashed password
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  ADMIN
+  USER
+}
