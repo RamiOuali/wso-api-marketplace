@@ -1,6 +1,6 @@
 
+import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
 
 // GET all nav items
 export async function GET() {

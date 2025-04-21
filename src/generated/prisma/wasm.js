@@ -123,23 +123,74 @@ exports.Prisma.SiteThemeScalarFieldEnum = {
   isActive: 'isActive',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
-  navbarLogo: 'navbarLogo',
-  navbarPrimaryColor: 'navbarPrimaryColor',
-  navbarTextColor: 'navbarTextColor',
-  navbarFont: 'navbarFont',
-  navbarShowAboutUs: 'navbarShowAboutUs',
-  navbarShowLanguage: 'navbarShowLanguage',
   siteTitle: 'siteTitle',
   siteDescription: 'siteDescription',
+  siteLogo: 'siteLogo',
+  favicon: 'favicon',
+  primaryColor: 'primaryColor',
+  secondaryColor: 'secondaryColor',
+  accentColor: 'accentColor',
+  backgroundColor: 'backgroundColor',
+  textColor: 'textColor',
+  linkColor: 'linkColor',
+  bodyFont: 'bodyFont',
+  headingFont: 'headingFont',
+  baseFontSize: 'baseFontSize',
+  headingFontSize: 'headingFontSize',
+  containerWidth: 'containerWidth',
+  contentWidth: 'contentWidth',
+  sidebarWidth: 'sidebarWidth',
+  navbarBackground: 'navbarBackground',
+  navbarTextColor: 'navbarTextColor',
+  navbarLogo: 'navbarLogo',
+  navbarHeight: 'navbarHeight',
+  navbarPosition: 'navbarPosition',
+  navbarShowSearch: 'navbarShowSearch',
+  navbarShowLanguage: 'navbarShowLanguage',
+  navbarShowUserMenu: 'navbarShowUserMenu',
+  navbarShowNotifications: 'navbarShowNotifications',
+  footerBackground: 'footerBackground',
+  footerTextColor: 'footerTextColor',
+  footerLogo: 'footerLogo',
+  footerCopyright: 'footerCopyright',
+  footerShowSocial: 'footerShowSocial',
+  footerShowNewsletter: 'footerShowNewsletter',
+  footerColumns: 'footerColumns',
+  heroBackground: 'heroBackground',
+  heroBackgroundImage: 'heroBackgroundImage',
+  heroTextColor: 'heroTextColor',
   heroTitle: 'heroTitle',
   heroSubtitle: 'heroSubtitle',
-  primaryBgColor: 'primaryBgColor',
-  secondaryBgColor: 'secondaryBgColor',
-  footerLogo: 'footerLogo',
-  footerText: 'footerText',
-  termsUrl: 'termsUrl',
-  privacyUrl: 'privacyUrl',
-  supportUrl: 'supportUrl'
+  heroButtonText: 'heroButtonText',
+  heroButtonLink: 'heroButtonLink',
+  heroButtonColor: 'heroButtonColor',
+  heroOverlayColor: 'heroOverlayColor',
+  heroOverlayOpacity: 'heroOverlayOpacity',
+  buttonPrimaryColor: 'buttonPrimaryColor',
+  buttonSecondaryColor: 'buttonSecondaryColor',
+  buttonTextColor: 'buttonTextColor',
+  buttonBorderRadius: 'buttonBorderRadius',
+  buttonPadding: 'buttonPadding',
+  inputBackground: 'inputBackground',
+  inputBorderColor: 'inputBorderColor',
+  inputTextColor: 'inputTextColor',
+  inputFocusColor: 'inputFocusColor',
+  inputBorderRadius: 'inputBorderRadius',
+  cardBackground: 'cardBackground',
+  cardBorderColor: 'cardBorderColor',
+  cardBorderRadius: 'cardBorderRadius',
+  cardShadow: 'cardShadow',
+  cardPadding: 'cardPadding',
+  successColor: 'successColor',
+  warningColor: 'warningColor',
+  errorColor: 'errorColor',
+  infoColor: 'infoColor',
+  metaTitle: 'metaTitle',
+  metaDescription: 'metaDescription',
+  metaKeywords: 'metaKeywords',
+  googleAnalyticsId: 'googleAnalyticsId',
+  googleTagManagerId: 'googleTagManagerId',
+  facebookPixelId: 'facebookPixelId'
 };
 
 exports.Prisma.NavItemScalarFieldEnum = {
@@ -166,6 +217,60 @@ exports.Prisma.LanguageScalarFieldEnum = {
   themeId: 'themeId'
 };
 
+exports.Prisma.ContentSectionScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  type: 'type',
+  title: 'title',
+  subtitle: 'subtitle',
+  content: 'content',
+  isActive: 'isActive',
+  order: 'order',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  themeId: 'themeId'
+};
+
+exports.Prisma.BannerScalarFieldEnum = {
+  id: 'id',
+  title: 'title',
+  content: 'content',
+  type: 'type',
+  backgroundColor: 'backgroundColor',
+  textColor: 'textColor',
+  isActive: 'isActive',
+  startDate: 'startDate',
+  endDate: 'endDate',
+  link: 'link',
+  linkText: 'linkText',
+  position: 'position',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  themeId: 'themeId'
+};
+
+exports.Prisma.SocialLinkScalarFieldEnum = {
+  id: 'id',
+  platform: 'platform',
+  url: 'url',
+  icon: 'icon',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  themeId: 'themeId'
+};
+
+exports.Prisma.ContactInfoScalarFieldEnum = {
+  id: 'id',
+  email: 'email',
+  phone: 'phone',
+  address: 'address',
+  workingHours: 'workingHours',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  themeId: 'themeId'
+};
+
 exports.Prisma.UserScalarFieldEnum = {
   id: 'id',
   email: 'email',
@@ -181,9 +286,24 @@ exports.Prisma.SortOrder = {
   desc: 'desc'
 };
 
+exports.Prisma.NullableJsonNullValueInput = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull
+};
+
+exports.Prisma.JsonNullValueInput = {
+  JsonNull: Prisma.JsonNull
+};
+
 exports.Prisma.QueryMode = {
   default: 'default',
   insensitive: 'insensitive'
+};
+
+exports.Prisma.JsonNullValueFilter = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull,
+  AnyNull: Prisma.AnyNull
 };
 
 exports.Prisma.NullsOrder = {
@@ -199,6 +319,10 @@ exports.Prisma.ModelName = {
   SiteTheme: 'SiteTheme',
   NavItem: 'NavItem',
   Language: 'Language',
+  ContentSection: 'ContentSection',
+  Banner: 'Banner',
+  SocialLink: 'SocialLink',
+  ContactInfo: 'ContactInfo',
   User: 'User'
 };
 

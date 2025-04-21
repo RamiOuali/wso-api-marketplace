@@ -14,41 +14,116 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Single table approach for site theme customization
+// Site Theme Model
 model SiteTheme {
   id        Int      @id @default(autoincrement())
-  name      String   @unique // e.g., "Default", "Dark", "Custom"
+  name      String   @unique
   isActive  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Navbar specific customization
-  navbarLogo         String  @default("https://devportal.choreo.dev/themes/default/images/logo-black.svg")
-  navbarPrimaryColor String  @default("#303f9f")
-  navbarTextColor    String  @default("#000000")
-  navbarFont         String  @default("Geist, sans-serif")
-  navbarShowAboutUs  Boolean @default(true)
-  navbarShowLanguage Boolean @default(true)
+  // Site Identity
+  siteTitle       String?
+  siteDescription String?
+  siteLogo        String?
+  favicon         String?
 
-  // Other site theme properties can be added here
-  siteTitle        String?
-  siteDescription  String?
-  heroTitle        String?
-  heroSubtitle     String?
-  primaryBgColor   String?
-  secondaryBgColor String?
-  footerLogo       String?
-  footerText       String?
-  termsUrl         String?
-  privacyUrl       String?
-  supportUrl       String?
+  // Global Colors
+  primaryColor    String? @default("#0070f3")
+  secondaryColor  String? @default("#7928ca")
+  accentColor     String? @default("#0070f3")
+  backgroundColor String? @default("#ffffff")
+  textColor       String? @default("#111111")
+  linkColor       String? @default("#0070f3")
+
+  // Typography
+  bodyFont        String? @default("Inter, sans-serif")
+  headingFont     String? @default("Inter, sans-serif")
+  baseFontSize    String? @default("16px")
+  headingFontSize String? @default("24px")
+
+  // Layout
+  containerWidth String? @default("1200px")
+  contentWidth   String? @default("800px")
+  sidebarWidth   String? @default("300px")
+
+  // Navbar Settings
+  navbarBackground        String? @default("#ffffff")
+  navbarTextColor         String? @default("#111111")
+  navbarLogo              String?
+  navbarHeight            String? @default("64px")
+  navbarPosition          String? @default("sticky")
+  navbarShowSearch        Boolean @default(true)
+  navbarShowLanguage      Boolean @default(true)
+  navbarShowUserMenu      Boolean @default(true)
+  navbarShowNotifications Boolean @default(true)
+
+  // Footer Settings
+  footerBackground     String? @default("#f8f9fa")
+  footerTextColor      String? @default("#111111")
+  footerLogo           String?
+  footerCopyright      String?
+  footerShowSocial     Boolean @default(true)
+  footerShowNewsletter Boolean @default(true)
+  footerColumns        Json?
+
+  // Hero Settings
+  heroBackground      String?
+  heroBackgroundImage String?
+  heroTextColor       String?
+  heroTitle           String?
+  heroSubtitle        String?
+  heroButtonText      String?
+  heroButtonLink      String?
+  heroButtonColor     String?
+  heroOverlayColor    String?
+  heroOverlayOpacity  Float?  @default(0.5)
+
+  // Button Styles
+  buttonPrimaryColor   String? @default("#0070f3")
+  buttonSecondaryColor String? @default("#7928ca")
+  buttonTextColor      String? @default("#ffffff")
+  buttonBorderRadius   String? @default("4px")
+  buttonPadding        String? @default("8px 16px")
+
+  // Form Styles
+  inputBackground   String? @default("#ffffff")
+  inputBorderColor  String? @default("#e2e8f0")
+  inputTextColor    String? @default("#111111")
+  inputFocusColor   String? @default("#0070f3")
+  inputBorderRadius String? @default("4px")
+
+  // Card Styles
+  cardBackground   String? @default("#ffffff")
+  cardBorderColor  String? @default("#e2e8f0")
+  cardBorderRadius String? @default("8px")
+  cardShadow       String? @default("0 1px 3px 0 rgb(0 0 0 / 0.1)")
+  cardPadding      String? @default("16px")
+
+  // Component Colors
+  successColor String? @default("#10b981")
+  warningColor String? @default("#f59e0b")
+  errorColor   String? @default("#ef4444")
+  infoColor    String? @default("#3b82f6")
+
+  // SEO & Analytics
+  metaTitle          String?
+  metaDescription    String?
+  metaKeywords       String?
+  googleAnalyticsId  String?
+  googleTagManagerId String?
+  facebookPixelId    String?
 
   // Relations
-  navItems  NavItem[]
-  languages Language[]
+  navItems        NavItem[]
+  languages       Language[]
+  contentSections ContentSection[]
+  banners         Banner[]
+  socialLinks     SocialLink[]
+  contactInfo     ContactInfo?
 }
 
-// Navigation menu items - customizable
+// Navigation menu items
 model NavItem {
   id         Int       @id @default(autoincrement())
   title      String
@@ -56,18 +131,18 @@ model NavItem {
   order      Int       @default(99)
   isActive   Boolean   @default(true)
   isExternal Boolean   @default(false)
-  icon       String? // Optional icon name
+  icon       String?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   theme      SiteTheme @relation(fields: [themeId], references: [id])
   themeId    Int
 }
 
-// Languages for internationalization
+// Languages
 model Language {
   id        Int       @id @default(autoincrement())
-  name      String // e.g., "English", "Español"
-  code      String    @unique // e.g., "en", "es"
+  name      String
+  code      String    @unique
   isActive  Boolean   @default(true)
   isDefault Boolean   @default(false)
   createdAt DateTime  @default(now())
@@ -76,12 +151,74 @@ model Language {
   themeId   Int
 }
 
-// Users table for authentication
+// Content Sections
+model ContentSection {
+  id        Int       @id @default(autoincrement())
+  name      String
+  type      String
+  title     String
+  subtitle  String?
+  content   Json
+  isActive  Boolean   @default(true)
+  order     Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  theme     SiteTheme @relation(fields: [themeId], references: [id])
+  themeId   Int
+}
+
+// Banners
+model Banner {
+  id              Int       @id @default(autoincrement())
+  title           String
+  content         String
+  type            String    @default("info")
+  backgroundColor String
+  textColor       String
+  isActive        Boolean   @default(false)
+  startDate       DateTime?
+  endDate         DateTime?
+  link            String?
+  linkText        String?
+  position        String    @default("top")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  theme           SiteTheme @relation(fields: [themeId], references: [id])
+  themeId         Int
+}
+
+// Social Links
+model SocialLink {
+  id        Int       @id @default(autoincrement())
+  platform  String
+  url       String
+  icon      String
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  theme     SiteTheme @relation(fields: [themeId], references: [id])
+  themeId   Int
+}
+
+// Contact Information
+model ContactInfo {
+  id           Int       @id @default(autoincrement())
+  email        String
+  phone        String?
+  address      String?
+  workingHours String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  theme        SiteTheme @relation(fields: [themeId], references: [id])
+  themeId      Int       @unique
+}
+
+// Users
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   name      String?
-  password  String // Hashed password
+  password  String
   role      Role     @default(USER)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
