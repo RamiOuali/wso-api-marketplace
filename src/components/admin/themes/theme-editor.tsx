@@ -92,11 +92,56 @@ const defaultTheme: Omit<Theme, "id"> = {
   metaKeywords: "api, marketplace, integration",
 }
 
+// Tab persistence key for localStorage
+const TAB_STORAGE_KEY = "theme-editor-active-tab"
+
 export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [theme, setTheme] = useState<Theme | Omit<Theme, "id">>(defaultTheme)
+  const fontOptions = [
+    { value: "Arial, sans-serif", label: "Arial", category: "System" },
+    { value: "Verdana, sans-serif", label: "Verdana", category: "System" },
+    { value: "Helvetica, sans-serif", label: "Helvetica", category: "System" },
+    { value: "Tahoma, sans-serif", label: "Tahoma", category: "System" },
+    { value: "Trebuchet MS, sans-serif", label: "Trebuchet MS", category: "System" },
+    { value: "Times New Roman, serif", label: "Times New Roman", category: "System" },
+    { value: "Georgia, serif", label: "Georgia", category: "System" },
+    { value: "Garamond, serif", label: "Garamond", category: "System" },
+    { value: "Courier New, monospace", label: "Courier New", category: "System" },
+    { value: "Monaco, monospace", label: "Monaco", category: "System" },
+    { value: "Inter, sans-serif", label: "Inter", category: "Google" },
+    { value: "Roboto, sans-serif", label: "Roboto", category: "Google" },
+    { value: "Open Sans, sans-serif", label: "Open Sans", category: "Google" },
+    { value: "Lato, sans-serif", label: "Lato", category: "Google" },
+    { value: "Montserrat, sans-serif", label: "Montserrat", category: "Google" },
+    { value: "Poppins, sans-serif", label: "Poppins", category: "Google" },
+    { value: "Playfair Display, serif", label: "Playfair Display", category: "Google" },
+    { value: "Merriweather, serif", label: "Merriweather", category: "Google" },
+    { value: "Source Code Pro, monospace", label: "Source Code Pro", category: "Google" },
+    { value: "JetBrains Mono, monospace", label: "JetBrains Mono", category: "Google" },
+  ];
+  // Add state for the active tab
+  const [activeTab, setActiveTab] = useState<string>("general")
+
+  // Load the active tab from localStorage on component mount
+  useEffect(() => {
+    // Only run in browser environment
+    if (typeof window !== "undefined") {
+      const savedTab = localStorage.getItem(TAB_STORAGE_KEY)
+      if (savedTab) {
+        setActiveTab(savedTab)
+      }
+    }
+  }, [])
+
+  // Save the active tab to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(TAB_STORAGE_KEY, activeTab)
+    }
+  }, [activeTab])
 
   useEffect(() => {
     if (isNew) {
@@ -124,9 +169,16 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
     fetchTheme()
   }, [themeId, isNew])
 
+  // Update the handleChange function to ensure we never set null values
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setTheme({ ...theme, [name]: value })
+  }
+
+  // Add a helper function to safely get string values
+  const safeString = (value: any): string => {
+    if (value === null || value === undefined) return ""
+    return String(value)
   }
 
   const handleSwitchChange = (name: string, checked: boolean) => {
@@ -170,6 +222,11 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
     })
   }
 
+  // Handle tab change
+  const handleTabChange = (value: string) => {
+    setActiveTab(value)
+  }
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -178,6 +235,14 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
     )
   }
 
+  const groupedFontOptions = fontOptions.reduce((acc, font) => {
+    const category = font.category;
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(font);
+    return acc;
+  }, {} as Record<string, typeof fontOptions>);
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
@@ -215,8 +280,8 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
         </div>
       </div>
 
-      <Tabs defaultValue="general">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 bg-gray-400">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="layout">Layout</TabsTrigger>
           <TabsTrigger value="colors">Colors</TabsTrigger>
@@ -235,7 +300,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                     <Input
                       id="name"
                       name="name"
-                      value={theme.name}
+                      value={safeString(theme.name)}
                       onChange={handleChange}
                       placeholder="Enter theme name"
                     />
@@ -257,7 +322,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                   <Input
                     id="siteTitle"
                     name="siteTitle"
-                    value={theme.siteTitle}
+                    value={safeString(theme.siteTitle)}
                     onChange={handleChange}
                     placeholder="Enter site title"
                   />
@@ -268,7 +333,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                   <Textarea
                     id="siteDescription"
                     name="siteDescription"
-                    value={theme.siteDescription}
+                    value={safeString(theme.siteDescription)}
                     onChange={handleChange}
                     placeholder="Enter site description"
                     rows={3}
@@ -281,7 +346,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                     <Input
                       id="siteLogo"
                       name="siteLogo"
-                      value={theme.siteLogo}
+                      value={safeString(theme.siteLogo)}
                       onChange={handleChange}
                       placeholder="/images/logo.png"
                     />
@@ -291,7 +356,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                     <Input
                       id="favicon"
                       name="favicon"
-                      value={theme.favicon}
+                      value={safeString(theme.favicon)}
                       onChange={handleChange}
                       placeholder="/images/favicon.ico"
                     />
@@ -305,7 +370,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                   <Input
                     id="metaTitle"
                     name="metaTitle"
-                    value={theme.metaTitle}
+                    value={safeString(theme.metaTitle)}
                     onChange={handleChange}
                     placeholder="Enter meta title"
                   />
@@ -316,7 +381,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                   <Textarea
                     id="metaDescription"
                     name="metaDescription"
-                    value={theme.metaDescription}
+                    value={safeString(theme.metaDescription)}
                     onChange={handleChange}
                     placeholder="Enter meta description"
                     rows={2}
@@ -328,7 +393,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                   <Input
                     id="metaKeywords"
                     name="metaKeywords"
-                    value={theme.metaKeywords}
+                    value={safeString(theme.metaKeywords)}
                     onChange={handleChange}
                     placeholder="api, marketplace, integration"
                   />
@@ -338,6 +403,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
           </Card>
         </TabsContent>
 
+        {/* Rest of the tabs remain unchanged */}
         {/* Layout Tab */}
         <TabsContent value="layout" className="space-y-6">
           <Card>
@@ -372,7 +438,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                         <Input
                           id="navbarLogo"
                           name="navbarLogo"
-                          value={theme.navbarLogo}
+                          value={safeString(theme.navbarLogo)}
                           onChange={handleChange}
                           placeholder="/images/logo.png"
                         />
@@ -382,7 +448,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                         <Input
                           id="navbarHeight"
                           name="navbarHeight"
-                          value={theme.navbarHeight}
+                          value={safeString(theme.navbarHeight)}
                           onChange={handleChange}
                           placeholder="80px"
                         />
@@ -394,7 +460,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                       <select
                         id="navbarPosition"
                         name="navbarPosition"
-                        value={theme.navbarPosition}
+                        value={safeString(theme.navbarPosition)}
                         onChange={handleChange as any}
                         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       >
@@ -441,11 +507,12 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                   </AccordionContent>
                 </AccordionItem>
 
+                {/* Rest of the accordion items remain the same */}
                 {/* Footer Section */}
                 <AccordionItem value="footer">
                   <AccordionTrigger>Footer Settings</AccordionTrigger>
                   <AccordionContent className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2">
+                         <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="footerBackground">Footer Background</Label>
                         <ColorPicker
@@ -470,7 +537,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                         <Input
                           id="footerLogo"
                           name="footerLogo"
-                          value={theme.footerLogo}
+                          value={safeString(theme.footerLogo)}
                           onChange={handleChange}
                           placeholder="/images/logo-white.png"
                         />
@@ -480,7 +547,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                         <Input
                           id="footerCopyright"
                           name="footerCopyright"
-                          value={theme.footerCopyright}
+                          value={safeString(theme.footerCopyright)}
                           onChange={handleChange}
                           placeholder="© 2023 API Marketplace. All rights reserved."
                         />
@@ -504,8 +571,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                         />
                         <Label htmlFor="footerShowNewsletter">Show Newsletter</Label>
                       </div>
-                    </div>
-                  </AccordionContent>
+                    </div>                  </AccordionContent>
                 </AccordionItem>
 
                 {/* Hero Section */}
@@ -536,7 +602,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                       <Input
                         id="heroBackgroundImage"
                         name="heroBackgroundImage"
-                        value={theme.heroBackgroundImage}
+                        value={safeString(theme.heroBackgroundImage)}
                         onChange={handleChange}
                         placeholder="/images/hero-background.jpg"
                       />
@@ -560,7 +626,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                           min="0"
                           max="1"
                           step="0.1"
-                          value={theme.heroOverlayOpacity}
+                          value={theme.heroOverlayOpacity !== null ? theme.heroOverlayOpacity : ""}
                           onChange={handleChange}
                           placeholder="0.6"
                         />
@@ -572,7 +638,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                       <Input
                         id="heroTitle"
                         name="heroTitle"
-                        value={theme.heroTitle}
+                        value={safeString(theme.heroTitle)}
                         onChange={handleChange}
                         placeholder="Welcome to our API Marketplace"
                       />
@@ -583,7 +649,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                       <Textarea
                         id="heroSubtitle"
                         name="heroSubtitle"
-                        value={theme.heroSubtitle}
+                        value={safeString(theme.heroSubtitle)}
                         onChange={handleChange}
                         placeholder="Discover, connect, and integrate with our extensive API collection"
                         rows={2}
@@ -596,7 +662,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                         <Input
                           id="heroButtonText"
                           name="heroButtonText"
-                          value={theme.heroButtonText}
+                          value={safeString(theme.heroButtonText)}
                           onChange={handleChange}
                           placeholder="Browse APIs"
                         />
@@ -606,7 +672,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                         <Input
                           id="heroButtonLink"
                           name="heroButtonLink"
-                          value={theme.heroButtonLink}
+                          value={safeString(theme.heroButtonLink)}
                           onChange={handleChange}
                           placeholder="/apis"
                         />
@@ -620,20 +686,20 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                         />
                       </div>
                     </div>
-                  </AccordionContent>
-                </AccordionItem>
+                          </AccordionContent>
+            </AccordionItem>
 
-                {/* Layout Dimensions */}
-                <AccordionItem value="dimensions">
-                  <AccordionTrigger>Layout Dimensions</AccordionTrigger>
-                  <AccordionContent className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-3">
+            {/* Layout Dimensions */}
+            <AccordionItem value="dimensions">
+              <AccordionTrigger>Layout Dimensions</AccordionTrigger>
+              <AccordionContent className="space-y-4">
+             <div className="grid gap-4 md:grid-cols-3">
                       <div className="space-y-2">
                         <Label htmlFor="containerWidth">Container Width</Label>
                         <Input
                           id="containerWidth"
                           name="containerWidth"
-                          value={theme.containerWidth}
+                          value={safeString(theme.containerWidth)}
                           onChange={handleChange}
                           placeholder="1200px"
                         />
@@ -643,7 +709,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                         <Input
                           id="contentWidth"
                           name="contentWidth"
-                          value={theme.contentWidth}
+                          value={safeString(theme.contentWidth)}
                           onChange={handleChange}
                           placeholder="800px"
                         />
@@ -653,20 +719,19 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                         <Input
                           id="sidebarWidth"
                           name="sidebarWidth"
-                          value={theme.sidebarWidth}
+                          value={safeString(theme.sidebarWidth)}
                           onChange={handleChange}
                           placeholder="300px"
                         />
                       </div>
                     </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Colors Tab */}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </CardContent>
+      </Card>
+    </TabsContent>
+        {/* Colors Tab */ }
         <TabsContent value="colors" className="space-y-6">
           <Card>
             <CardContent className="pt-6">
@@ -771,241 +836,334 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
           </Card>
         </TabsContent>
 
-        {/* Typography Tab */}
-        <TabsContent value="typography" className="space-y-6">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="bodyFont">Body Font</Label>
-                    <Input
-                      id="bodyFont"
-                      name="bodyFont"
-                      value={theme.bodyFont}
-                      onChange={handleChange}
-                      placeholder="Inter, sans-serif"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="headingFont">Heading Font</Label>
-                    <Input
-                      id="headingFont"
-                      name="headingFont"
-                      value={theme.headingFont}
-                      onChange={handleChange}
-                      placeholder="Inter, sans-serif"
-                    />
-                  </div>
-                </div>
+     <TabsContent value="typography" className="space-y-6">
+  <Card>
+    <CardContent className="pt-6">
+      <div className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="bodyFont">Body Font</Label>
+            <select
+              id="bodyFont"
+              name="bodyFont"
+              value={safeString(theme.bodyFont)}
+              onChange={handleChange as any}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <optgroup label="System Fonts">
+                {groupedFontOptions['System']?.map((font) => (
+                  <option key={font.value} value={font.value}>{font.label}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Google Fonts">
+                {groupedFontOptions['Google']?.map((font) => (
+                  <option key={font.value} value={font.value}>{font.label}</option>
+                ))}
+              </optgroup>
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              System fonts work instantly. Google fonts may require adding a link tag to your HTML.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="headingFont">Heading Font</Label>
+            <select
+              id="headingFont"
+              name="headingFont"
+              value={safeString(theme.headingFont)}
+              onChange={handleChange as any}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <optgroup label="System Fonts">
+                {groupedFontOptions['System']?.map((font) => (
+                  <option key={font.value} value={font.value}>{font.label}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Google Fonts">
+                {groupedFontOptions['Google']?.map((font) => (
+                  <option key={font.value} value={font.value}>{font.label}</option>
+                ))}
+              </optgroup>
+            </select>
+          </div>
+        </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="baseFontSize">Base Font Size</Label>
-                    <Input
-                      id="baseFontSize"
-                      name="baseFontSize"
-                      value={theme.baseFontSize}
-                      onChange={handleChange}
-                      placeholder="16px"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="headingFontSize">Heading Font Size</Label>
-                    <Input
-                      id="headingFontSize"
-                      name="headingFontSize"
-                      value={theme.headingFontSize}
-                      onChange={handleChange}
-                      placeholder="3rem"
-                    />
-                  </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="baseFontSize">Base Font Size</Label>
+            <Input
+              id="baseFontSize"
+              name="baseFontSize"
+              value={safeString(theme.baseFontSize)}
+              onChange={handleChange}
+              placeholder="16px"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="headingFontSize">Heading Font Size</Label>
+            <Input
+              id="headingFontSize"
+              name="headingFontSize"
+              value={safeString(theme.headingFontSize)}
+              onChange={handleChange}
+              placeholder="3rem"
+            />
+          </div>
+        </div>
+        
+        {/* Font Preview Section */}
+        <div className="mt-6 p-4 border rounded-md">
+          <h3 className="text-sm font-medium mb-2">Font Preview</h3>
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Body Font</p>
+              <div style={{ fontFamily: theme.bodyFont }}>
+                <p>The quick brown fox jumps over the lazy dog.</p>
+                <p style={{ fontSize: "0.875rem" }}>ABCDEFGHIJKLMNOPQRSTUVWXYZ</p>
+                <p style={{ fontSize: "0.875rem" }}>abcdefghijklmnopqrstuvwxyz</p>
+                <p style={{ fontSize: "0.875rem" }}>0123456789</p>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Heading Font</p>
+              <div style={{ fontFamily: theme.headingFont }}>
+                <p className="text-xl font-bold">The quick brown fox jumps over the lazy dog.</p>
+                <p className="font-bold">ABCDEFGHIJKLMNOPQRSTUVWXYZ</p>
+                <p className="font-bold">abcdefghijklmnopqrstuvwxyz</p>
+                <p className="font-bold">0123456789</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Font Import Helper */}
+        <div className="bg-muted/50 p-4 rounded-md">
+          <h3 className="text-sm font-medium mb-2">Font Import Code</h3>
+          <p className="text-xs text-muted-foreground mb-3">
+            If you're using Google Fonts, add this code to your HTML head section:
+          </p>
+          <div className="bg-muted p-3 rounded border text-sm font-mono overflow-x-auto">
+            {theme.bodyFont.includes('Inter') || theme.headingFont.includes('Inter') ? 
+              '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">\n' : ''}
+            {theme.bodyFont.includes('Roboto') || theme.headingFont.includes('Roboto') ? 
+              '<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">\n' : ''}
+            {theme.bodyFont.includes('Open Sans') || theme.headingFont.includes('Open Sans') ? 
+              '<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">\n' : ''}
+            {theme.bodyFont.includes('Lato') || theme.headingFont.includes('Lato') ? 
+              '<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet">\n' : ''}
+            {theme.bodyFont.includes('Montserrat') || theme.headingFont.includes('Montserrat') ? 
+              '<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">\n' : ''}
+            {theme.bodyFont.includes('Poppins') || theme.headingFont.includes('Poppins') ? 
+              '<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">\n' : ''}
+            {theme.bodyFont.includes('Playfair Display') || theme.headingFont.includes('Playfair Display') ? 
+              '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">\n' : ''}
+            {theme.bodyFont.includes('Merriweather') || theme.headingFont.includes('Merriweather') ? 
+              '<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">\n' : ''}
+            {theme.bodyFont.includes('Source Code Pro') || theme.headingFont.includes('Source Code Pro') ? 
+              '<link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">\n' : ''}
+            {theme.bodyFont.includes('JetBrains Mono') || theme.headingFont.includes('JetBrains Mono') ? 
+              '<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">' : ''}
+            {!theme.bodyFont.includes('Google') && !theme.headingFont.includes('Google') && 
+             !(theme.bodyFont.includes('Inter') || theme.headingFont.includes('Inter') ||
+               theme.bodyFont.includes('Roboto') || theme.headingFont.includes('Roboto') ||
+               theme.bodyFont.includes('Open Sans') || theme.headingFont.includes('Open Sans') ||
+               theme.bodyFont.includes('Lato') || theme.headingFont.includes('Lato') ||
+               theme.bodyFont.includes('Montserrat') || theme.headingFont.includes('Montserrat') ||
+               theme.bodyFont.includes('Poppins') || theme.headingFont.includes('Poppins') ||
+               theme.bodyFont.includes('Playfair Display') || theme.headingFont.includes('Playfair Display') ||
+               theme.bodyFont.includes('Merriweather') || theme.headingFont.includes('Merriweather') ||
+               theme.bodyFont.includes('Source Code Pro') || theme.headingFont.includes('Source Code Pro') ||
+               theme.bodyFont.includes('JetBrains Mono') || theme.headingFont.includes('JetBrains Mono')) ? 
+              '/* No Google Fonts selected - system fonts work without imports */' : ''}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            System fonts don't need to be imported as they're already available on users' devices.
+          </p>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+</TabsContent>
+  {/* Components Tab */ }
+  <TabsContent value="components" className="space-y-6">
+    <Card>
+      <CardContent className="pt-6">
+        <Accordion type="multiple" className="w-full">
+          {/* Buttons */}
+          <AccordionItem value="buttons">
+            <AccordionTrigger>Buttons</AccordionTrigger>
+            <AccordionContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="buttonPrimaryColor">Primary Button Color</Label>
+                  <ColorPicker
+                    id="buttonPrimaryColor"
+                    value={theme.buttonPrimaryColor}
+                    onChange={(value) => handleColorChange("buttonPrimaryColor", value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="buttonSecondaryColor">Secondary Button Color</Label>
+                  <ColorPicker
+                    id="buttonSecondaryColor"
+                    value={theme.buttonSecondaryColor}
+                    onChange={(value) => handleColorChange("buttonSecondaryColor", value)}
+                  />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        {/* Components Tab */}
-        <TabsContent value="components" className="space-y-6">
-          <Card>
-            <CardContent className="pt-6">
-              <Accordion type="multiple" className="w-full">
-                {/* Buttons */}
-                <AccordionItem value="buttons">
-                  <AccordionTrigger>Buttons</AccordionTrigger>
-                  <AccordionContent className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="buttonPrimaryColor">Primary Button Color</Label>
-                        <ColorPicker
-                          id="buttonPrimaryColor"
-                          value={theme.buttonPrimaryColor}
-                          onChange={(value) => handleColorChange("buttonPrimaryColor", value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="buttonSecondaryColor">Secondary Button Color</Label>
-                        <ColorPicker
-                          id="buttonSecondaryColor"
-                          value={theme.buttonSecondaryColor}
-                          onChange={(value) => handleColorChange("buttonSecondaryColor", value)}
-                        />
-                      </div>
-                    </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="buttonTextColor">Button Text Color</Label>
+                  <ColorPicker
+                    id="buttonTextColor"
+                    value={theme.buttonTextColor}
+                    onChange={(value) => handleColorChange("buttonTextColor", value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="buttonBorderRadius">Button Border Radius</Label>
+                  <Input
+                    id="buttonBorderRadius"
+                    name="buttonBorderRadius"
+                    value={safeString(theme.buttonBorderRadius)}
+                    onChange={handleChange}
+                    placeholder="0.375rem"
+                  />
+                </div>
+              </div>
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="buttonTextColor">Button Text Color</Label>
-                        <ColorPicker
-                          id="buttonTextColor"
-                          value={theme.buttonTextColor}
-                          onChange={(value) => handleColorChange("buttonTextColor", value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="buttonBorderRadius">Button Border Radius</Label>
-                        <Input
-                          id="buttonBorderRadius"
-                          name="buttonBorderRadius"
-                          value={theme.buttonBorderRadius}
-                          onChange={handleChange}
-                          placeholder="0.375rem"
-                        />
-                      </div>
-                    </div>
+              <div className="space-y-2">
+                <Label htmlFor="buttonPadding">Button Padding</Label>
+                <Input
+                  id="buttonPadding"
+                  name="buttonPadding"
+                  value={safeString(theme.buttonPadding)}
+                  onChange={handleChange}
+                  placeholder="0.5rem 1rem"
+                />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="buttonPadding">Button Padding</Label>
-                      <Input
-                        id="buttonPadding"
-                        name="buttonPadding"
-                        value={theme.buttonPadding}
-                        onChange={handleChange}
-                        placeholder="0.5rem 1rem"
-                      />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
+          {/* Form Inputs */}
+          <AccordionItem value="inputs">
+            <AccordionTrigger>Form Inputs</AccordionTrigger>
+            <AccordionContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="inputBackground">Input Background</Label>
+                  <ColorPicker
+                    id="inputBackground"
+                    value={theme.inputBackground}
+                    onChange={(value) => handleColorChange("inputBackground", value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="inputBorderColor">Input Border Color</Label>
+                  <ColorPicker
+                    id="inputBorderColor"
+                    value={theme.inputBorderColor}
+                    onChange={(value) => handleColorChange("inputBorderColor", value)}
+                  />
+                </div>
+              </div>
 
-                {/* Form Inputs */}
-                <AccordionItem value="inputs">
-                  <AccordionTrigger>Form Inputs</AccordionTrigger>
-                  <AccordionContent className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="inputBackground">Input Background</Label>
-                        <ColorPicker
-                          id="inputBackground"
-                          value={theme.inputBackground}
-                          onChange={(value) => handleColorChange("inputBackground", value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="inputBorderColor">Input Border Color</Label>
-                        <ColorPicker
-                          id="inputBorderColor"
-                          value={theme.inputBorderColor}
-                          onChange={(value) => handleColorChange("inputBorderColor", value)}
-                        />
-                      </div>
-                    </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="inputTextColor">Input Text Color</Label>
+                  <ColorPicker
+                    id="inputTextColor"
+                    value={theme.inputTextColor}
+                    onChange={(value) => handleColorChange("inputTextColor", value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="inputFocusColor">Input Focus Color</Label>
+                  <ColorPicker
+                    id="inputFocusColor"
+                    value={theme.inputFocusColor}
+                    onChange={(value) => handleColorChange("inputFocusColor", value)}
+                  />
+                </div>
+              </div>
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="inputTextColor">Input Text Color</Label>
-                        <ColorPicker
-                          id="inputTextColor"
-                          value={theme.inputTextColor}
-                          onChange={(value) => handleColorChange("inputTextColor", value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="inputFocusColor">Input Focus Color</Label>
-                        <ColorPicker
-                          id="inputFocusColor"
-                          value={theme.inputFocusColor}
-                          onChange={(value) => handleColorChange("inputFocusColor", value)}
-                        />
-                      </div>
-                    </div>
+              <div className="space-y-2">
+                <Label htmlFor="inputBorderRadius">Input Border Radius</Label>
+                <Input
+                  id="inputBorderRadius"
+                  name="inputBorderRadius"
+                  value={safeString(theme.inputBorderRadius)}
+                  onChange={handleChange}
+                  placeholder="0.375rem"
+                />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="inputBorderRadius">Input Border Radius</Label>
-                      <Input
-                        id="inputBorderRadius"
-                        name="inputBorderRadius"
-                        value={theme.inputBorderRadius}
-                        onChange={handleChange}
-                        placeholder="0.375rem"
-                      />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
+          {/* Cards */}
+          <AccordionItem value="cards">
+            <AccordionTrigger>Cards</AccordionTrigger>
+            <AccordionContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="cardBackground">Card Background</Label>
+                  <ColorPicker
+                    id="cardBackground"
+                    value={theme.cardBackground}
+                    onChange={(value) => handleColorChange("cardBackground", value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cardBorderColor">Card Border Color</Label>
+                  <ColorPicker
+                    id="cardBorderColor"
+                    value={theme.cardBorderColor}
+                    onChange={(value) => handleColorChange("cardBorderColor", value)}
+                  />
+                </div>
+              </div>
 
-                {/* Cards */}
-                <AccordionItem value="cards">
-                  <AccordionTrigger>Cards</AccordionTrigger>
-                  <AccordionContent className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="cardBackground">Card Background</Label>
-                        <ColorPicker
-                          id="cardBackground"
-                          value={theme.cardBackground}
-                          onChange={(value) => handleColorChange("cardBackground", value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="cardBorderColor">Card Border Color</Label>
-                        <ColorPicker
-                          id="cardBorderColor"
-                          value={theme.cardBorderColor}
-                          onChange={(value) => handleColorChange("cardBorderColor", value)}
-                        />
-                      </div>
-                    </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="cardBorderRadius">Card Border Radius</Label>
+                  <Input
+                    id="cardBorderRadius"
+                    name="cardBorderRadius"
+                    value={safeString(theme.cardBorderRadius)}
+                    onChange={handleChange}
+                    placeholder="0.5rem"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cardShadow">Card Shadow</Label>
+                  <Input
+                    id="cardShadow"
+                    name="cardShadow"
+                    value={safeString(theme.cardShadow)}
+                    onChange={handleChange}
+                    placeholder="0 2px 4px rgba(0,0,0,0.1)"
+                  />
+                </div>
+              </div>
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="cardBorderRadius">Card Border Radius</Label>
-                        <Input
-                          id="cardBorderRadius"
-                          name="cardBorderRadius"
-                          value={theme.cardBorderRadius}
-                          onChange={handleChange}
-                          placeholder="0.5rem"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="cardShadow">Card Shadow</Label>
-                        <Input
-                          id="cardShadow"
-                          name="cardShadow"
-                          value={theme.cardShadow}
-                          onChange={handleChange}
-                          placeholder="0 2px 4px rgba(0,0,0,0.1)"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="cardPadding">Card Padding</Label>
-                      <Input
-                        id="cardPadding"
-                        name="cardPadding"
-                        value={theme.cardPadding}
-                        onChange={handleChange}
-                        placeholder="1rem"
-                      />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
+              <div className="space-y-2">
+                <Label htmlFor="cardPadding">Card Padding</Label>
+                <Input
+                  id="cardPadding"
+                  name="cardPadding"
+                  value={safeString(theme.cardPadding)}
+                  onChange={handleChange}
+                  placeholder="1rem"
+                />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </CardContent>
+    </Card>
+  </TabsContent>
+      </Tabs >
+    </div >
   )
 }

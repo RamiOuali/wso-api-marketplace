@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Pencil, Trash2, MoreVertical, Check, Plus, Loader2 } from "lucide-react"
+import { Trash2, MoreVertical, Check, Plus, Loader2, Edit, Eye } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import {
@@ -112,6 +112,8 @@ export function ThemesList() {
     })
   }
 
+
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
@@ -133,84 +135,35 @@ export function ThemesList() {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex h-64 items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : themes.length === 0 ? (
-            <div className="flex h-64 flex-col items-center justify-center space-y-3 p-4 text-center">
-              <div className="text-lg font-medium">No themes found</div>
-              <p className="text-sm text-muted-foreground">Get started by creating a new theme for your marketplace.</p>
-              <Link href="/admin/themes/new">
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create New Theme
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Last Updated</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {themes.map((theme) => (
-                  <TableRow key={theme.id}>
-                    <TableCell className="font-medium">{theme.name}</TableCell>
-                    <TableCell>
-                      {theme.isActive ? (
-                        <Badge className="bg-green-500 hover:bg-green-600">Active</Badge>
-                      ) : (
-                        <Badge variant="outline">Inactive</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>{formatDate(theme.createdAt)}</TableCell>
-                    <TableCell>{formatDate(theme.updatedAt)}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" disabled={actionInProgress}>
-                            <MoreVertical className="h-4 w-4" />
-                            <span className="sr-only">Actions</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/admin/themes/${theme.id}`}>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Edit
-                            </Link>
-                          </DropdownMenuItem>
-                          {!theme.isActive && (
-                            <DropdownMenuItem onClick={() => handleActivate(theme.id)}>
-                              <Check className="mr-2 h-4 w-4" />
-                              Set as Active
-                            </DropdownMenuItem>
-                          )}
-                          {!theme.isActive && (
-                            <DropdownMenuItem className="text-red-500" onClick={() => confirmDelete(theme.id)}>
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {loading ? (
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : themes.length === 0 ? (
+        <div className="flex h-64 flex-col items-center justify-center space-y-3 p-4 text-center border rounded-lg">
+          <div className="text-lg font-medium">No themes found</div>
+          <p className="text-sm text-muted-foreground">Get started by creating a new theme for your marketplace.</p>
+          <Link href="/admin/themes/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Create New Theme
+            </Button>
+          </Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {themes.map((theme) => (
+            <ThemeCard
+              key={theme.id}
+              theme={theme}
+              onActivate={handleActivate}
+              onDelete={confirmDelete}
+              actionInProgress={actionInProgress}
+              formatDate={formatDate}
+            />
+          ))}
+        </div>
+      )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
@@ -240,5 +193,131 @@ export function ThemesList() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  )
+}
+
+interface ThemeCardProps {
+  theme: Theme
+  onActivate: (id: string) => void
+  onDelete: (id: string) => void
+  actionInProgress: boolean
+  formatDate: (date?: string) => string
+}
+
+function ThemeCard({ theme, onActivate, onDelete, actionInProgress, formatDate }: ThemeCardProps) {
+  const heroImage = theme.siteLogo || "/placeholder.svg?height=200&width=400"
+  const primaryColor = theme.primaryColor || "#0070f3"
+
+  return (
+    <Card className="overflow-hidden flex flex-col h-full transition-all hover:shadow-md">
+      <div className="relative">
+        {/* Theme preview image */}
+        <div className="relative h-48 w-full overflow-hidden">
+          <Image
+            src={heroImage || "/placeholder.svg"}
+            alt={`${theme.name} preview`}
+            className="object-cover"
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          />
+
+          {/* Color overlay using theme's primary color */}
+          <div className="absolute inset-0 opacity-30" style={{ backgroundColor: primaryColor }} />
+        </div>
+
+        {/* Status badge */}
+        {theme.isActive && (
+          <div className="absolute top-4 right-4">
+            <Badge className="bg-green-500 hover:bg-green-600 px-3 py-1 text-white">Active</Badge>
+          </div>
+        )}
+
+        {/* Theme color palette */}
+        <div className="absolute -bottom-3 left-4 flex space-x-1">
+          <div
+            className="h-6 w-6 rounded-full border-2 border-white shadow-sm"
+            style={{ backgroundColor: theme.primaryColor || "#0070f3" }}
+          />
+          <div
+            className="h-6 w-6 rounded-full border-2 border-white shadow-sm"
+            style={{ backgroundColor: theme.secondaryColor || "#6c757d" }}
+          />
+          <div
+            className="h-6 w-6 rounded-full border-2 border-white shadow-sm"
+            style={{ backgroundColor: theme.accentColor || "#f97316" }}
+          />
+        </div>
+      </div>
+
+      <CardContent className="pt-6 flex-grow">
+        <h3 className="text-xl font-semibold mb-2">{theme.name}</h3>
+
+        <div className="text-sm text-muted-foreground mb-4">
+          <p className="mb-1">Created: {formatDate(theme.createdAt)}</p>
+          <p>Last updated: {formatDate(theme.updatedAt)}</p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {theme.siteTitle && (
+            <Badge variant="outline" className="text-xs">
+              {theme.siteTitle}
+            </Badge>
+          )}
+        </div>
+      </CardContent>
+
+      <CardFooter className="border-t bg-slate-50 pt-3 pb-3 flex justify-between">
+        <Link href={`/admin/themes/${theme.id}`}>
+          <Button variant="outline" size="sm">
+            <Edit className="h-4 w-4 mr-1" />
+            Edit
+          </Button>
+        </Link>
+
+        <div className="flex gap-2">
+          {!theme.isActive && (
+            <Button variant="secondary" size="sm" onClick={() => onActivate(theme.id)} disabled={actionInProgress}>
+              <Check className="h-4 w-4 mr-1" />
+              Activate
+            </Button>
+          )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" disabled={actionInProgress}>
+                <MoreVertical className="h-4 w-4" />
+                <span className="sr-only">Actions</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href={`/admin/themes/${theme.id}`}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/`}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  Preview
+                </Link>
+              </DropdownMenuItem>
+              {!theme.isActive && (
+                <DropdownMenuItem onClick={() => onActivate(theme.id)}>
+                  <Check className="mr-2 h-4 w-4" />
+                  Set as Active
+                </DropdownMenuItem>
+              )}
+              {!theme.isActive && (
+                <DropdownMenuItem className="text-red-500" onClick={() => onDelete(theme.id)}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardFooter>
+    </Card>
   )
 }

@@ -1,4 +1,3 @@
-
 // Theme service for interacting with the theme API
 
 export interface Theme {
@@ -162,15 +161,18 @@ export async function createTheme(theme: Omit<Theme, "id">): Promise<Theme> {
   }
 }
 
-// Update theme
+// Update the updateTheme function to exclude nested relations
 export async function updateTheme(theme: Theme): Promise<Theme> {
   try {
-    const response = await fetch(`/api/theme/${theme.id}`, {
+    // Extract the ID and remove nested relations before sending to the API
+    const { id, navItems, languages, contentSections, banners, socialLinks, contactInfo, ...updateData } = theme
+
+    const response = await fetch(`/api/theme/${id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(theme),
+      body: JSON.stringify(updateData),
     })
 
     if (!response.ok) {

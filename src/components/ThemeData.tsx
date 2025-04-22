@@ -63,7 +63,6 @@ export async function getThemeData(): Promise<Theme | null> {
       footerShowNewsletter: theme.footerShowNewsletter || false,
       footerColumns: theme.footerColumns || {},
 
-      // Hero section - these are the critical ones for your issue
       heroBackground: theme.heroBackground || '#121826',
       heroBackgroundImage: theme.heroBackgroundImage || '/images/hero-background.jpg',
       heroTextColor: theme.heroTextColor || '#ffffff',

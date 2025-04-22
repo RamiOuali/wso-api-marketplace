@@ -44,9 +44,12 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     const data = await request.json()
 
+    // Remove nested relations that can't be directly updated
+    const { navItems, languages, contentSections, banners, socialLinks, contactInfo, ...updateData } = data
+
     const theme = await prisma.siteTheme.update({
       where: { id },
-      data,
+      data: updateData,
     })
 
     return NextResponse.json(theme)
