@@ -156,6 +156,7 @@ exports.Prisma.SiteThemeScalarFieldEnum = {
   footerShowSocial: 'footerShowSocial',
   footerShowNewsletter: 'footerShowNewsletter',
   footerColumns: 'footerColumns',
+  heroDesign: 'heroDesign',
   heroBackground: 'heroBackground',
   heroBackgroundImage: 'heroBackgroundImage',
   heroTextColor: 'heroTextColor',

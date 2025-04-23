@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, Globe, ChevronDown } from "lucide-react";
+import { Menu, Globe, ChevronDown, LogIn, UserPlus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,12 +20,12 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useThemeContext } from "@/providers/ThemeProvider";
-import { hover } from "framer-motion";
 
 export function Navbar() {
-  const { theme } = useThemeContext();
+  const { theme } = useThemeContext() || { theme: null };
   const pathname = usePathname();
 
+  // Handle loading state and provide fallback
   if (!theme) {
     return (
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
@@ -36,32 +36,55 @@ export function Navbar() {
     );
   }
 
-  const navItems = theme.navItems || [
-    { title: 'Home', href: '/', isExternal: false },
-    { title: 'APIs', href: '/apis', isExternal: false },
-    { title: 'Documentation', href: '/docs', isExternal: false },
-  ];
+  // Default values for the theme
+  const defaultTheme = {
+    navItems: [
+      { title: 'Home', href: '/', isExternal: false },
+      { title: 'APIs', href: '/apis', isExternal: false },
+      { title: 'Documentation', href: '/docs', isExternal: false },
+    ],
+    navbarShowUserMenu: true,
+    languages: [],
+    navbarLogo: '/images/logo.png',
+    navbarPosition: 'sticky',
+    navbarHeight: '64px',
+    navbarBackground: 'transparent',
+    navbarTextColor: 'inherit',
+    bodyFont: 'inherit',
+    containerWidth: '100%',
+    primaryColor: '#007bff',
+    buttonBorderRadius: '0.375rem',
+    buttonTextColor: 'white',
+    textColor: 'inherit',
+    navbarShowLanguage: false,
+  };
 
-  const filteredNavItems = theme.navbarShowUserMenu
+  // Merge default theme with provided theme values
+  const mergedTheme = { ...defaultTheme, ...theme };
+
+  const navItems = mergedTheme.navItems;
+  
+  const filteredNavItems = mergedTheme.navbarShowUserMenu
     ? navItems
     : navItems.filter((item) => item.title !== 'About Us');
 
-  const languages = theme.languages || [];
-  const logoPath = theme.navbarLogo || '/images/logo.png';
+  const languages = mergedTheme.languages || [];
+  const logoPath = mergedTheme.navbarLogo;
 
   return (
     <header
       className="top-0 z-50 w-full backdrop-blur supports-[backdrop-filter]:bg-background/60"
       style={{
-        height: theme.navbarHeight,
-        backgroundColor: theme.navbarBackground,
-        color: theme.navbarTextColor,
-        fontFamily: theme.bodyFont,
+        position: mergedTheme.navbarPosition,
+        height: mergedTheme.navbarHeight,
+        backgroundColor: mergedTheme.navbarBackground,
+        color: mergedTheme.navbarTextColor,
+        fontFamily: mergedTheme.bodyFont,
       }}
     >
       <div
         className="mx-auto flex items-center justify-between px-4"
-        style={{ maxWidth: theme.containerWidth, height: theme.navbarHeight }}
+        style={{ maxWidth: mergedTheme.containerWidth, height: mergedTheme.navbarHeight }}
       >
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
@@ -74,7 +97,6 @@ export function Navbar() {
             style={{ maxHeight: '32px' }}
             priority
           />
-       
         </Link>
 
         {/* Desktop Navigation */}
@@ -87,7 +109,7 @@ export function Navbar() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm font-medium transition-colors hover:underline"
-                style={{ color: theme.navbarTextColor }}
+                style={{ color: mergedTheme.navbarTextColor }}
               >
                 {item.title}
               </a>
@@ -104,8 +126,8 @@ export function Navbar() {
                 style={{
                   color:
                     pathname === item.href
-                      ? theme.primaryColor
-                      : theme.navbarTextColor,
+                      ? mergedTheme.primaryColor
+                      : mergedTheme.navbarTextColor,
                 }}
               >
                 {item.title}
@@ -115,8 +137,8 @@ export function Navbar() {
         </nav>
 
         {/* Action buttons */}
-        <div className="hidden md:flex items-center gap-2">
-          {theme.navbarShowLanguage && languages.length > 0 && (
+        <div className="hidden md:flex items-center gap-4">
+          {mergedTheme.navbarShowLanguage && languages.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -139,31 +161,45 @@ export function Navbar() {
             </DropdownMenu>
           )}
 
-          {theme.navbarShowUserMenu && (
-            <>
-<Button
-  variant="ghost"
-  size="sm"
-  className="custom-signin-btn"
-  style={{
-    '--navbar-text-color': theme.navbarTextColor,
-    '--navbar-hover-color': theme.primaryColor,
-    borderRadius: theme.buttonBorderRadius,
-  } as React.CSSProperties}
->
-  Sign In
-</Button>
+          {mergedTheme.navbarShowUserMenu && (
+            <div className="flex items-center gap-3">
+              {/* Creative Sign In Button */}
               <Button
-                size="sm"
+                variant="ghost"
+                className="group relative overflow-hidden px-5 py-2 transition-all duration-300 hover:bg-transparent"
                 style={{
-                  backgroundColor: theme.primaryColor,
-                  color: theme.buttonTextColor,
-                  borderRadius: theme.buttonBorderRadius,
+                  color: mergedTheme.navbarTextColor,
+                  borderRadius: mergedTheme.buttonBorderRadius,
                 }}
               >
-                Sign Up
+                <span className="relative z-10 flex items-center gap-2 font-medium">
+                  <LogIn className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  Sign In
+                </span>
+                <span 
+                  className="absolute bottom-0 left-0 h-0.5 w-full transform scale-x-0 transition-transform duration-300 group-hover:scale-x-100"
+                  style={{ backgroundColor: mergedTheme.primaryColor }}
+                ></span>
               </Button>
-            </>
+              
+              {/* Creative Sign Up Button with animation */}
+              <Button
+                className="group relative overflow-hidden transition-all duration-300"
+                style={{
+                  backgroundColor: mergedTheme.primaryColor,
+                  color: mergedTheme.buttonTextColor,
+                  borderRadius: mergedTheme.buttonBorderRadius,
+                }}
+              >
+                <span className="relative z-10 flex items-center gap-2">
+                  <UserPlus className="h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />
+                  Sign Up
+                </span>
+                <span 
+                  className="absolute inset-0 h-full w-full bg-black opacity-0 transition-opacity duration-300 group-hover:opacity-10"
+                ></span>
+              </Button>
+            </div>
           )}
         </div>
 
@@ -185,7 +221,7 @@ export function Navbar() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm font-medium"
-                    style={{ color: theme.textColor }}
+                    style={{ color: mergedTheme.textColor }}
                   >
                     {item.title}
                   </a>
@@ -194,19 +230,32 @@ export function Navbar() {
                     key={item.href}
                     href={item.href}
                     className="text-sm font-medium"
-                    style={{ color: theme.textColor }}
+                    style={{ color: mergedTheme.textColor }}
                   >
                     {item.title}
                   </Link>
                 )
               )}
-              {theme.navbarShowUserMenu && (
-                <>
-                  <Button variant="outline">Sign In</Button>
-                  <Button style={{ backgroundColor: theme.primaryColor }}>
-                    Sign Up
+              {mergedTheme.navbarShowUserMenu && (
+                <div className="flex flex-col gap-3 mt-4">
+                  {/* Mobile Sign In Button */}
+                  <Button 
+                    variant="outline"
+                    className="flex items-center justify-center gap-2 transition-all"
+                  >
+                    <LogIn className="h-4 w-4" />
+                    <span>Sign In</span>
                   </Button>
-                </>
+                  
+                  {/* Mobile Sign Up Button */}
+                  <Button 
+                    className="flex items-center justify-center gap-2"
+                    style={{ backgroundColor: mergedTheme.primaryColor }}
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    <span>Sign Up</span>
+                  </Button>
+                </div>
               )}
             </div>
           </SheetContent>

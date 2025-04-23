@@ -13,9 +13,11 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
       {theme ? (
         <ThemeProvider theme={theme}>
           <Navbar />
-          <main className="min-h-screen">
+                  <main className="min-h-screen">
             {children}
           </main>
+
+
           <Footer />
         </ThemeProvider>
       ) : (

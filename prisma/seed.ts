@@ -6,7 +6,7 @@ const prisma = new PrismaClient()
 async function main() {
   // Create a default theme if it doesn't exist
   const theme = await prisma.siteTheme.upsert({
-    where: { name: 'Default Theme' },
+    where: { name: 'Default Theme2' },
     update: {},
     create: {
       name: 'Default Theme',
@@ -44,6 +44,7 @@ async function main() {
       footerShowSocial: true,
       footerShowNewsletter: true,
       footerColumns: 4,
+      heroDesign:"Hero",
       heroBackground: '#2563eb',
       heroBackgroundImage: '/hero-bg.jpg',
       heroTextColor: '#ffffff',

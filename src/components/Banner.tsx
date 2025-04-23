@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import type { Banner as BannerType, BannerType as BannerVariant } from '@/types/banner';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 

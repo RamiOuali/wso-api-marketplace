@@ -1649,6 +1649,7 @@ export namespace Prisma {
     footerCopyright: string | null
     footerShowSocial: boolean | null
     footerShowNewsletter: boolean | null
+    heroDesign: string | null
     heroBackground: string | null
     heroBackgroundImage: string | null
     heroTextColor: string | null
@@ -1724,6 +1725,7 @@ export namespace Prisma {
     footerCopyright: string | null
     footerShowSocial: boolean | null
     footerShowNewsletter: boolean | null
+    heroDesign: string | null
     heroBackground: string | null
     heroBackgroundImage: string | null
     heroTextColor: string | null
@@ -1800,6 +1802,7 @@ export namespace Prisma {
     footerShowSocial: number
     footerShowNewsletter: number
     footerColumns: number
+    heroDesign: number
     heroBackground: number
     heroBackgroundImage: number
     heroTextColor: number
@@ -1887,6 +1890,7 @@ export namespace Prisma {
     footerCopyright?: true
     footerShowSocial?: true
     footerShowNewsletter?: true
+    heroDesign?: true
     heroBackground?: true
     heroBackgroundImage?: true
     heroTextColor?: true
@@ -1962,6 +1966,7 @@ export namespace Prisma {
     footerCopyright?: true
     footerShowSocial?: true
     footerShowNewsletter?: true
+    heroDesign?: true
     heroBackground?: true
     heroBackgroundImage?: true
     heroTextColor?: true
@@ -2038,6 +2043,7 @@ export namespace Prisma {
     footerShowSocial?: true
     footerShowNewsletter?: true
     footerColumns?: true
+    heroDesign?: true
     heroBackground?: true
     heroBackgroundImage?: true
     heroTextColor?: true
@@ -2201,6 +2207,7 @@ export namespace Prisma {
     footerShowSocial: boolean
     footerShowNewsletter: boolean
     footerColumns: JsonValue | null
+    heroDesign: string | null
     heroBackground: string | null
     heroBackgroundImage: string | null
     heroTextColor: string | null
@@ -2296,6 +2303,7 @@ export namespace Prisma {
     footerShowSocial?: boolean
     footerShowNewsletter?: boolean
     footerColumns?: boolean
+    heroDesign?: boolean
     heroBackground?: boolean
     heroBackgroundImage?: boolean
     heroTextColor?: boolean
@@ -2379,6 +2387,7 @@ export namespace Prisma {
     footerShowSocial?: boolean
     footerShowNewsletter?: boolean
     footerColumns?: boolean
+    heroDesign?: boolean
     heroBackground?: boolean
     heroBackgroundImage?: boolean
     heroTextColor?: boolean
@@ -2455,6 +2464,7 @@ export namespace Prisma {
     footerShowSocial?: boolean
     footerShowNewsletter?: boolean
     footerColumns?: boolean
+    heroDesign?: boolean
     heroBackground?: boolean
     heroBackgroundImage?: boolean
     heroTextColor?: boolean
@@ -2531,6 +2541,7 @@ export namespace Prisma {
     footerShowSocial?: boolean
     footerShowNewsletter?: boolean
     footerColumns?: boolean
+    heroDesign?: boolean
     heroBackground?: boolean
     heroBackgroundImage?: boolean
     heroTextColor?: boolean
@@ -2568,7 +2579,7 @@ export namespace Prisma {
     facebookPixelId?: boolean
   }
 
-  export type SiteThemeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "isActive" | "createdAt" | "updatedAt" | "siteTitle" | "siteDescription" | "siteLogo" | "favicon" | "primaryColor" | "secondaryColor" | "accentColor" | "backgroundColor" | "textColor" | "linkColor" | "bodyFont" | "headingFont" | "baseFontSize" | "headingFontSize" | "containerWidth" | "contentWidth" | "sidebarWidth" | "navbarBackground" | "navbarTextColor" | "navbarLogo" | "navbarHeight" | "navbarPosition" | "navbarShowSearch" | "navbarShowLanguage" | "navbarShowUserMenu" | "navbarShowNotifications" | "footerBackground" | "footerTextColor" | "footerLogo" | "footerCopyright" | "footerShowSocial" | "footerShowNewsletter" | "footerColumns" | "heroBackground" | "heroBackgroundImage" | "heroTextColor" | "heroTitle" | "heroSubtitle" | "heroButtonText" | "heroButtonLink" | "heroButtonColor" | "heroOverlayColor" | "heroOverlayOpacity" | "buttonPrimaryColor" | "buttonSecondaryColor" | "buttonTextColor" | "buttonBorderRadius" | "buttonPadding" | "inputBackground" | "inputBorderColor" | "inputTextColor" | "inputFocusColor" | "inputBorderRadius" | "cardBackground" | "cardBorderColor" | "cardBorderRadius" | "cardShadow" | "cardPadding" | "successColor" | "warningColor" | "errorColor" | "infoColor" | "metaTitle" | "metaDescription" | "metaKeywords" | "googleAnalyticsId" | "googleTagManagerId" | "facebookPixelId", ExtArgs["result"]["siteTheme"]>
+  export type SiteThemeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "isActive" | "createdAt" | "updatedAt" | "siteTitle" | "siteDescription" | "siteLogo" | "favicon" | "primaryColor" | "secondaryColor" | "accentColor" | "backgroundColor" | "textColor" | "linkColor" | "bodyFont" | "headingFont" | "baseFontSize" | "headingFontSize" | "containerWidth" | "contentWidth" | "sidebarWidth" | "navbarBackground" | "navbarTextColor" | "navbarLogo" | "navbarHeight" | "navbarPosition" | "navbarShowSearch" | "navbarShowLanguage" | "navbarShowUserMenu" | "navbarShowNotifications" | "footerBackground" | "footerTextColor" | "footerLogo" | "footerCopyright" | "footerShowSocial" | "footerShowNewsletter" | "footerColumns" | "heroDesign" | "heroBackground" | "heroBackgroundImage" | "heroTextColor" | "heroTitle" | "heroSubtitle" | "heroButtonText" | "heroButtonLink" | "heroButtonColor" | "heroOverlayColor" | "heroOverlayOpacity" | "buttonPrimaryColor" | "buttonSecondaryColor" | "buttonTextColor" | "buttonBorderRadius" | "buttonPadding" | "inputBackground" | "inputBorderColor" | "inputTextColor" | "inputFocusColor" | "inputBorderRadius" | "cardBackground" | "cardBorderColor" | "cardBorderRadius" | "cardShadow" | "cardPadding" | "successColor" | "warningColor" | "errorColor" | "infoColor" | "metaTitle" | "metaDescription" | "metaKeywords" | "googleAnalyticsId" | "googleTagManagerId" | "facebookPixelId", ExtArgs["result"]["siteTheme"]>
   export type SiteThemeInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     navItems?: boolean | SiteTheme$navItemsArgs<ExtArgs>
     languages?: boolean | SiteTheme$languagesArgs<ExtArgs>
@@ -2630,6 +2641,7 @@ export namespace Prisma {
       footerShowSocial: boolean
       footerShowNewsletter: boolean
       footerColumns: Prisma.JsonValue | null
+      heroDesign: string | null
       heroBackground: string | null
       heroBackgroundImage: string | null
       heroTextColor: string | null
@@ -3132,6 +3144,7 @@ export namespace Prisma {
     readonly footerShowSocial: FieldRef<"SiteTheme", 'Boolean'>
     readonly footerShowNewsletter: FieldRef<"SiteTheme", 'Boolean'>
     readonly footerColumns: FieldRef<"SiteTheme", 'Json'>
+    readonly heroDesign: FieldRef<"SiteTheme", 'String'>
     readonly heroBackground: FieldRef<"SiteTheme", 'String'>
     readonly heroBackgroundImage: FieldRef<"SiteTheme", 'String'>
     readonly heroTextColor: FieldRef<"SiteTheme", 'String'>
@@ -11790,6 +11803,7 @@ export namespace Prisma {
     footerShowSocial: 'footerShowSocial',
     footerShowNewsletter: 'footerShowNewsletter',
     footerColumns: 'footerColumns',
+    heroDesign: 'heroDesign',
     heroBackground: 'heroBackground',
     heroBackgroundImage: 'heroBackgroundImage',
     heroTextColor: 'heroTextColor',
@@ -12128,6 +12142,7 @@ export namespace Prisma {
     footerShowSocial?: BoolFilter<"SiteTheme"> | boolean
     footerShowNewsletter?: BoolFilter<"SiteTheme"> | boolean
     footerColumns?: JsonNullableFilter<"SiteTheme">
+    heroDesign?: StringNullableFilter<"SiteTheme"> | string | null
     heroBackground?: StringNullableFilter<"SiteTheme"> | string | null
     heroBackgroundImage?: StringNullableFilter<"SiteTheme"> | string | null
     heroTextColor?: StringNullableFilter<"SiteTheme"> | string | null
@@ -12210,6 +12225,7 @@ export namespace Prisma {
     footerShowSocial?: SortOrder
     footerShowNewsletter?: SortOrder
     footerColumns?: SortOrderInput | SortOrder
+    heroDesign?: SortOrderInput | SortOrder
     heroBackground?: SortOrderInput | SortOrder
     heroBackgroundImage?: SortOrderInput | SortOrder
     heroTextColor?: SortOrderInput | SortOrder
@@ -12295,6 +12311,7 @@ export namespace Prisma {
     footerShowSocial?: BoolFilter<"SiteTheme"> | boolean
     footerShowNewsletter?: BoolFilter<"SiteTheme"> | boolean
     footerColumns?: JsonNullableFilter<"SiteTheme">
+    heroDesign?: StringNullableFilter<"SiteTheme"> | string | null
     heroBackground?: StringNullableFilter<"SiteTheme"> | string | null
     heroBackgroundImage?: StringNullableFilter<"SiteTheme"> | string | null
     heroTextColor?: StringNullableFilter<"SiteTheme"> | string | null
@@ -12377,6 +12394,7 @@ export namespace Prisma {
     footerShowSocial?: SortOrder
     footerShowNewsletter?: SortOrder
     footerColumns?: SortOrderInput | SortOrder
+    heroDesign?: SortOrderInput | SortOrder
     heroBackground?: SortOrderInput | SortOrder
     heroBackgroundImage?: SortOrderInput | SortOrder
     heroTextColor?: SortOrderInput | SortOrder
@@ -12461,6 +12479,7 @@ export namespace Prisma {
     footerShowSocial?: BoolWithAggregatesFilter<"SiteTheme"> | boolean
     footerShowNewsletter?: BoolWithAggregatesFilter<"SiteTheme"> | boolean
     footerColumns?: JsonNullableWithAggregatesFilter<"SiteTheme">
+    heroDesign?: StringNullableWithAggregatesFilter<"SiteTheme"> | string | null
     heroBackground?: StringNullableWithAggregatesFilter<"SiteTheme"> | string | null
     heroBackgroundImage?: StringNullableWithAggregatesFilter<"SiteTheme"> | string | null
     heroTextColor?: StringNullableWithAggregatesFilter<"SiteTheme"> | string | null
@@ -13092,6 +13111,7 @@ export namespace Prisma {
     footerShowSocial?: boolean
     footerShowNewsletter?: boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: string | null
     heroBackground?: string | null
     heroBackgroundImage?: string | null
     heroTextColor?: string | null
@@ -13174,6 +13194,7 @@ export namespace Prisma {
     footerShowSocial?: boolean
     footerShowNewsletter?: boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: string | null
     heroBackground?: string | null
     heroBackgroundImage?: string | null
     heroTextColor?: string | null
@@ -13255,6 +13276,7 @@ export namespace Prisma {
     footerShowSocial?: BoolFieldUpdateOperationsInput | boolean
     footerShowNewsletter?: BoolFieldUpdateOperationsInput | boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackground?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackgroundImage?: NullableStringFieldUpdateOperationsInput | string | null
     heroTextColor?: NullableStringFieldUpdateOperationsInput | string | null
@@ -13337,6 +13359,7 @@ export namespace Prisma {
     footerShowSocial?: BoolFieldUpdateOperationsInput | boolean
     footerShowNewsletter?: BoolFieldUpdateOperationsInput | boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackground?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackgroundImage?: NullableStringFieldUpdateOperationsInput | string | null
     heroTextColor?: NullableStringFieldUpdateOperationsInput | string | null
@@ -13419,6 +13442,7 @@ export namespace Prisma {
     footerShowSocial?: boolean
     footerShowNewsletter?: boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: string | null
     heroBackground?: string | null
     heroBackgroundImage?: string | null
     heroTextColor?: string | null
@@ -13494,6 +13518,7 @@ export namespace Prisma {
     footerShowSocial?: BoolFieldUpdateOperationsInput | boolean
     footerShowNewsletter?: BoolFieldUpdateOperationsInput | boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackground?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackgroundImage?: NullableStringFieldUpdateOperationsInput | string | null
     heroTextColor?: NullableStringFieldUpdateOperationsInput | string | null
@@ -13570,6 +13595,7 @@ export namespace Prisma {
     footerShowSocial?: BoolFieldUpdateOperationsInput | boolean
     footerShowNewsletter?: BoolFieldUpdateOperationsInput | boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackground?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackgroundImage?: NullableStringFieldUpdateOperationsInput | string | null
     heroTextColor?: NullableStringFieldUpdateOperationsInput | string | null
@@ -14386,6 +14412,7 @@ export namespace Prisma {
     footerShowSocial?: SortOrder
     footerShowNewsletter?: SortOrder
     footerColumns?: SortOrder
+    heroDesign?: SortOrder
     heroBackground?: SortOrder
     heroBackgroundImage?: SortOrder
     heroTextColor?: SortOrder
@@ -14466,6 +14493,7 @@ export namespace Prisma {
     footerCopyright?: SortOrder
     footerShowSocial?: SortOrder
     footerShowNewsletter?: SortOrder
+    heroDesign?: SortOrder
     heroBackground?: SortOrder
     heroBackgroundImage?: SortOrder
     heroTextColor?: SortOrder
@@ -14541,6 +14569,7 @@ export namespace Prisma {
     footerCopyright?: SortOrder
     footerShowSocial?: SortOrder
     footerShowNewsletter?: SortOrder
+    heroDesign?: SortOrder
     heroBackground?: SortOrder
     heroBackgroundImage?: SortOrder
     heroTextColor?: SortOrder
@@ -16182,6 +16211,7 @@ export namespace Prisma {
     footerShowSocial?: boolean
     footerShowNewsletter?: boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: string | null
     heroBackground?: string | null
     heroBackgroundImage?: string | null
     heroTextColor?: string | null
@@ -16263,6 +16293,7 @@ export namespace Prisma {
     footerShowSocial?: boolean
     footerShowNewsletter?: boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: string | null
     heroBackground?: string | null
     heroBackgroundImage?: string | null
     heroTextColor?: string | null
@@ -16359,6 +16390,7 @@ export namespace Prisma {
     footerShowSocial?: BoolFieldUpdateOperationsInput | boolean
     footerShowNewsletter?: BoolFieldUpdateOperationsInput | boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackground?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackgroundImage?: NullableStringFieldUpdateOperationsInput | string | null
     heroTextColor?: NullableStringFieldUpdateOperationsInput | string | null
@@ -16440,6 +16472,7 @@ export namespace Prisma {
     footerShowSocial?: BoolFieldUpdateOperationsInput | boolean
     footerShowNewsletter?: BoolFieldUpdateOperationsInput | boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackground?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackgroundImage?: NullableStringFieldUpdateOperationsInput | string | null
     heroTextColor?: NullableStringFieldUpdateOperationsInput | string | null
@@ -16520,6 +16553,7 @@ export namespace Prisma {
     footerShowSocial?: boolean
     footerShowNewsletter?: boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: string | null
     heroBackground?: string | null
     heroBackgroundImage?: string | null
     heroTextColor?: string | null
@@ -16601,6 +16635,7 @@ export namespace Prisma {
     footerShowSocial?: boolean
     footerShowNewsletter?: boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: string | null
     heroBackground?: string | null
     heroBackgroundImage?: string | null
     heroTextColor?: string | null
@@ -16697,6 +16732,7 @@ export namespace Prisma {
     footerShowSocial?: BoolFieldUpdateOperationsInput | boolean
     footerShowNewsletter?: BoolFieldUpdateOperationsInput | boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackground?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackgroundImage?: NullableStringFieldUpdateOperationsInput | string | null
     heroTextColor?: NullableStringFieldUpdateOperationsInput | string | null
@@ -16778,6 +16814,7 @@ export namespace Prisma {
     footerShowSocial?: BoolFieldUpdateOperationsInput | boolean
     footerShowNewsletter?: BoolFieldUpdateOperationsInput | boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackground?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackgroundImage?: NullableStringFieldUpdateOperationsInput | string | null
     heroTextColor?: NullableStringFieldUpdateOperationsInput | string | null
@@ -16858,6 +16895,7 @@ export namespace Prisma {
     footerShowSocial?: boolean
     footerShowNewsletter?: boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: string | null
     heroBackground?: string | null
     heroBackgroundImage?: string | null
     heroTextColor?: string | null
@@ -16939,6 +16977,7 @@ export namespace Prisma {
     footerShowSocial?: boolean
     footerShowNewsletter?: boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: string | null
     heroBackground?: string | null
     heroBackgroundImage?: string | null
     heroTextColor?: string | null
@@ -17035,6 +17074,7 @@ export namespace Prisma {
     footerShowSocial?: BoolFieldUpdateOperationsInput | boolean
     footerShowNewsletter?: BoolFieldUpdateOperationsInput | boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackground?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackgroundImage?: NullableStringFieldUpdateOperationsInput | string | null
     heroTextColor?: NullableStringFieldUpdateOperationsInput | string | null
@@ -17116,6 +17156,7 @@ export namespace Prisma {
     footerShowSocial?: BoolFieldUpdateOperationsInput | boolean
     footerShowNewsletter?: BoolFieldUpdateOperationsInput | boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackground?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackgroundImage?: NullableStringFieldUpdateOperationsInput | string | null
     heroTextColor?: NullableStringFieldUpdateOperationsInput | string | null
@@ -17196,6 +17237,7 @@ export namespace Prisma {
     footerShowSocial?: boolean
     footerShowNewsletter?: boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: string | null
     heroBackground?: string | null
     heroBackgroundImage?: string | null
     heroTextColor?: string | null
@@ -17277,6 +17319,7 @@ export namespace Prisma {
     footerShowSocial?: boolean
     footerShowNewsletter?: boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: string | null
     heroBackground?: string | null
     heroBackgroundImage?: string | null
     heroTextColor?: string | null
@@ -17373,6 +17416,7 @@ export namespace Prisma {
     footerShowSocial?: BoolFieldUpdateOperationsInput | boolean
     footerShowNewsletter?: BoolFieldUpdateOperationsInput | boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackground?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackgroundImage?: NullableStringFieldUpdateOperationsInput | string | null
     heroTextColor?: NullableStringFieldUpdateOperationsInput | string | null
@@ -17454,6 +17498,7 @@ export namespace Prisma {
     footerShowSocial?: BoolFieldUpdateOperationsInput | boolean
     footerShowNewsletter?: BoolFieldUpdateOperationsInput | boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackground?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackgroundImage?: NullableStringFieldUpdateOperationsInput | string | null
     heroTextColor?: NullableStringFieldUpdateOperationsInput | string | null
@@ -17534,6 +17579,7 @@ export namespace Prisma {
     footerShowSocial?: boolean
     footerShowNewsletter?: boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: string | null
     heroBackground?: string | null
     heroBackgroundImage?: string | null
     heroTextColor?: string | null
@@ -17615,6 +17661,7 @@ export namespace Prisma {
     footerShowSocial?: boolean
     footerShowNewsletter?: boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: string | null
     heroBackground?: string | null
     heroBackgroundImage?: string | null
     heroTextColor?: string | null
@@ -17711,6 +17758,7 @@ export namespace Prisma {
     footerShowSocial?: BoolFieldUpdateOperationsInput | boolean
     footerShowNewsletter?: BoolFieldUpdateOperationsInput | boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackground?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackgroundImage?: NullableStringFieldUpdateOperationsInput | string | null
     heroTextColor?: NullableStringFieldUpdateOperationsInput | string | null
@@ -17792,6 +17840,7 @@ export namespace Prisma {
     footerShowSocial?: BoolFieldUpdateOperationsInput | boolean
     footerShowNewsletter?: BoolFieldUpdateOperationsInput | boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackground?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackgroundImage?: NullableStringFieldUpdateOperationsInput | string | null
     heroTextColor?: NullableStringFieldUpdateOperationsInput | string | null
@@ -17872,6 +17921,7 @@ export namespace Prisma {
     footerShowSocial?: boolean
     footerShowNewsletter?: boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: string | null
     heroBackground?: string | null
     heroBackgroundImage?: string | null
     heroTextColor?: string | null
@@ -17953,6 +18003,7 @@ export namespace Prisma {
     footerShowSocial?: boolean
     footerShowNewsletter?: boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: string | null
     heroBackground?: string | null
     heroBackgroundImage?: string | null
     heroTextColor?: string | null
@@ -18049,6 +18100,7 @@ export namespace Prisma {
     footerShowSocial?: BoolFieldUpdateOperationsInput | boolean
     footerShowNewsletter?: BoolFieldUpdateOperationsInput | boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackground?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackgroundImage?: NullableStringFieldUpdateOperationsInput | string | null
     heroTextColor?: NullableStringFieldUpdateOperationsInput | string | null
@@ -18130,6 +18182,7 @@ export namespace Prisma {
     footerShowSocial?: BoolFieldUpdateOperationsInput | boolean
     footerShowNewsletter?: BoolFieldUpdateOperationsInput | boolean
     footerColumns?: NullableJsonNullValueInput | InputJsonValue
+    heroDesign?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackground?: NullableStringFieldUpdateOperationsInput | string | null
     heroBackgroundImage?: NullableStringFieldUpdateOperationsInput | string | null
     heroTextColor?: NullableStringFieldUpdateOperationsInput | string | null

@@ -6,12 +6,49 @@ import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 
+// Define proper types for the theme
+interface HeroFeature {
+  icon?: string;
+  text: string;
+}
+
+interface HeroTheme {
+  heroBackgroundImage?: string;
+  heroBackground?: string;
+  heroOverlayColor?: string;
+  heroOverlayOpacity?: number;
+  heroBadgeText?: string;
+  heroBadgeColor?: string;
+  heroBadgeTextColor?: string;
+  heroTitle?: string;
+  heroSubtitle?: string;
+  heroGlassEffect?: boolean;
+  heroTextGradient?: boolean;
+  heroTextShadow?: string;
+  headingFont?: string;
+  bodyFont?: string;
+  heroButtonText?: string;
+  heroButtonLink?: string;
+  heroButtonColor?: string;
+  buttonTextColor?: string;
+  heroSecondaryButtonText?: string;
+  heroSecondaryButtonLink?: string;
+  heroSecondaryButtonColor?: string;
+  heroSecondaryButtonTextColor?: string;
+  heroFeatures?: HeroFeature[];
+  heroTextureOverlay?: boolean;
+}
+
+interface ThemeContextType {
+  theme: HeroTheme | null;
+}
+
 export function Hero() {
-  const { theme } = useThemeContext();
-  const [isVisible, setIsVisible] = useState(false);
-  const [mediaLoaded, setMediaLoaded] = useState(false);
-  const [mediaType, setMediaType] = useState(null);
-  const mediaRef = useRef(null);
+  const { theme } = useThemeContext() as ThemeContextType;
+  const [isVisible, setIsVisible] = useState<boolean>(false);
+  const [mediaLoaded, setMediaLoaded] = useState<boolean>(false);
+  const [mediaType, setMediaType] = useState<'video' | 'image' | 'svg' | null>(null);
+  const mediaRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
@@ -37,21 +74,9 @@ export function Hero() {
     return null;
   }
 
-  // Determine background style based on media type
-  const getBackgroundStyle = () => {
-    if (!theme.heroBackgroundImage || mediaType === 'video') {
-      return {
-        background: theme.heroBackground || "linear-gradient(135deg, #121826 0%, #1e2a44 100%)"
-      };
-    }
-
-    return {
-      backgroundImage: `linear-gradient(to bottom right, ${theme.heroOverlayColor || "rgba(0,0,0,0.6)"}, ${theme.heroOverlayColor || "rgba(0,0,0,0.4)"}), url("${theme.heroBackgroundImage}")`,
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      backgroundRepeat: "no-repeat",
-      backgroundAttachment: "fixed",
-    };
+  // Handle media load events
+  const handleMediaLoad = () => {
+    setMediaLoaded(true);
   };
 
   // Animation variants for Framer Motion
@@ -80,52 +105,53 @@ export function Hero() {
     },
   };
 
-  const handleMediaLoad = () => {
-    setMediaLoaded(true);
-  };
-
   return (
     <section
       className="relative min-h-[70vh] lg:min-h-[90vh] flex items-center justify-center overflow-hidden"
-      style={getBackgroundStyle()}
       aria-label="Hero section"
     >
-      {/* Video or SVG Background if applicable */}
-      {theme.heroBackgroundImage && mediaType === 'video' && (
-        <div className="absolute inset-0 w-full h-full">
-          <video
-            ref={mediaRef}
-            src={theme.heroBackgroundImage}
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover"
-            onLoadedData={handleMediaLoad}
-            style={{ opacity: mediaLoaded ? 1 : 0, transition: 'opacity 0.5s ease' }}
-          />
-        </div>
-      )}
-
-      {/* Special handling for SVG backgrounds */}
-      {theme.heroBackgroundImage && mediaType === 'svg' && (
-        <div
-          className="absolute inset-0 w-full h-full bg-center bg-no-repeat"
+      {/* Background media handling */}
+      {!theme.heroBackgroundImage ? (
+        // Fallback gradient background
+        <div 
+          className="absolute inset-0 w-full h-full" 
+          style={{ 
+            background: theme.heroBackground || "linear-gradient(135deg, #121826 0%, #1e2a44 100%)"
+          }}
+        />
+      ) : mediaType === 'video' ? (
+        // Video background
+        <video
+          ref={mediaRef}
+          src={theme.heroBackgroundImage}
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+          onLoadedData={handleMediaLoad}
+          style={{ opacity: mediaLoaded ? 1 : 0, transition: 'opacity 0.5s ease' }}
+        />
+      ) : (
+        // Image or SVG background
+        <div 
+          className="absolute inset-0 w-full h-full bg-center bg-cover bg-no-repeat"
           style={{
             backgroundImage: `url("${theme.heroBackgroundImage}")`,
-            backgroundSize: "contain",
-            opacity: 0.5
+            backgroundSize: mediaType === 'svg' ? "contain" : "cover",
+            backgroundAttachment: "fixed"
           }}
-          aria-hidden="true"
         />
       )}
 
-      {/* Dynamic overlay with subtle noise texture */}
+      {/* Enhanced overlay with noise texture */}
       <div
-        className="absolute inset-0 z-10 bg-gradient-to-b from-black/60 via-black/40 to-transparent"
+        className="absolute inset-0 z-10"
         style={{
+          backgroundColor: theme.heroOverlayColor || "rgba(0,0,0,0.6)",
           opacity: theme.heroOverlayOpacity || 0.7,
-          backgroundImage: "url('data:image/svg+xml,%3Csvg viewBox=\"0 0 200 200\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cfilter id=\"noiseFilter\"%3E%3CfeTurbulence type=\"fractalNoise\" baseFrequency=\"0.65\" numOctaves=\"3\" stitchTiles=\"stitch\"/%3E%3C/filter%3E%3Crect width=\"100%25\" height=\"100%25\" filter=\"url(%23noiseFilter)\" opacity=\"0.1\"/%3E%3C/svg%3E')",
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 250 250' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.15'/%3E%3C/svg%3E")`,
+          backgroundBlendMode: "overlay",
         }}
       />
 
@@ -279,11 +305,6 @@ export function Hero() {
         >
           <div className="w-1 h-2 bg-white/70 rounded-full absolute top-2 left-1/2 -translate-x-1/2" />
         </motion.div>
-      </div>
-
-      {/* Enhanced bottom wave/gradient */}
-      <div className="absolute bottom-0 left-0 w-full">
-        <div className="h-24 bg-gradient-to-t from-background/90 to-transparent" />
       </div>
     </section>
   );

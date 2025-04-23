@@ -34,31 +34,31 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // PATCH /api/theme/[id] - Update theme by ID
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, context: { params: { id: string } }) {
   try {
-    const id = Number.parseInt(params.id, 10)
+    // Destructure params after ensuring context is properly awaited
+    const params = context.params;
+    const id = Number.parseInt(params.id, 10);
 
     if (isNaN(id)) {
-      return NextResponse.json({ error: "Invalid ID format" }, { status: 400 })
+      return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
     }
 
-    const data = await request.json()
-
+    const data = await request.json();
     // Remove nested relations that can't be directly updated
-    const { navItems, languages, contentSections, banners, socialLinks, contactInfo, ...updateData } = data
+    const { navItems, languages, contentSections, banners, socialLinks, contactInfo, ...updateData } = data;
 
     const theme = await prisma.siteTheme.update({
       where: { id },
       data: updateData,
-    })
+    });
 
-    return NextResponse.json(theme)
+    return NextResponse.json(theme);
   } catch (error) {
-    console.error("Error updating theme:", error)
-    return NextResponse.json({ error: "Failed to update theme" }, { status: 500 })
+    console.error("Error updating theme:", error);
+    return NextResponse.json({ error: "Failed to update theme" }, { status: 500 });
   }
 }
-
 // DELETE /api/theme/[id] - Delete theme by ID
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {

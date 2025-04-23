@@ -62,7 +62,7 @@ export async function getThemeData(): Promise<Theme | null> {
       footerShowSocial: theme.footerShowSocial || true,
       footerShowNewsletter: theme.footerShowNewsletter || false,
       footerColumns: theme.footerColumns || {},
-
+      heroDesign:theme.heroDesign || 'Hero3' ,
       heroBackground: theme.heroBackground || '#121826',
       heroBackgroundImage: theme.heroBackgroundImage || '/images/hero-background.jpg',
       heroTextColor: theme.heroTextColor || '#ffffff',
@@ -81,7 +81,7 @@ export async function getThemeData(): Promise<Theme | null> {
       buttonPadding: theme.buttonPadding || '0.5rem 1rem',
       inputBackground: theme.inputBackground || '#ffffff',
       inputBorderColor: theme.inputBorderColor || '#d1d5db',
-      inputTextColor: theme.inputTextColor || '#333333',
+      inputTextColor: theme.inputTextColor   || '#333333',
       inputFocusColor: theme.inputFocusColor || '#0070f3',
       inputBorderRadius: theme.inputBorderRadius || '0.375rem',
       cardBackground: theme.cardBackground || '#ffffff',

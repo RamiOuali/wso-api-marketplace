@@ -17,6 +17,7 @@ import { Loader2, Save, ArrowLeft, Eye } from "lucide-react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { ColorPicker } from "@/components/admin/themes/color-picker"
 import { getThemeById, createTheme, updateTheme, type Theme } from "@/lib/theme-service"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 interface ThemeEditorProps {
   themeId?: string
@@ -68,6 +69,7 @@ const defaultTheme: Omit<Theme, "id"> = {
   heroButtonColor: "#0070f3",
   heroOverlayColor: "rgba(0,0,0,0.5)",
   heroOverlayOpacity: 0.6,
+  heroDesign: "Hero", // Added hero design field with default value
   buttonPrimaryColor: "#0070f3",
   buttonSecondaryColor: "#6c757d",
   buttonTextColor: "#ffffff",
@@ -189,6 +191,10 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
     setTheme({ ...theme, [name]: value })
   }
 
+  const handleHeroDesignChange = (value: string) => {
+    setTheme({ ...theme, heroDesign: value })
+  }
+
   const handleSave = async () => {
     setSaving(true)
 
@@ -242,8 +248,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
     }
     acc[category].push(font);
     return acc;
-  }, {} as Record<string, typeof fontOptions>);
-  return (
+  }, {} as Record<string, typeof fontOptions>);  return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div className="flex items-center gap-2">
@@ -512,7 +517,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                 <AccordionItem value="footer">
                   <AccordionTrigger>Footer Settings</AccordionTrigger>
                   <AccordionContent className="space-y-4">
-                         <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="footerBackground">Footer Background</Label>
                         <ColorPicker
@@ -578,6 +583,111 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                 <AccordionItem value="hero">
                   <AccordionTrigger>Hero Section</AccordionTrigger>
                   <AccordionContent className="space-y-4">
+                    {/* Add Hero Design Selection */}
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-base">Hero Design</Label>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Choose a layout template for your hero section
+                        </p>
+                      </div>
+
+                      <RadioGroup
+                        value={theme.heroDesign}
+                        onValueChange={handleHeroDesignChange}
+                        className="grid grid-cols-1 gap-8 md:grid-cols-3"
+                      >
+                        <div className="relative">
+                          <RadioGroupItem
+                            value="Hero"
+                            id="heroDesign1"
+                            className="sr-only peer"
+                          />
+                          <Label
+                            htmlFor="heroDesign1"
+                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                          >
+                            {/* Hero Design 1 Preview */}
+                            <div className="w-full h-32 bg-gray-100 rounded-md p-2 mb-2">
+                              <div className="flex flex-col items-center justify-center h-full space-y-1">
+                                <div className="w-3/4 h-2 bg-gray-300 rounded-full mb-1"></div>
+                                <div className="w-1/2 h-2 bg-gray-300 rounded-full"></div>
+                                <div className="w-16 h-4 bg-blue-500 rounded-sm mt-2"></div>
+                              </div>
+                            </div>
+                            <span className="block w-full text-center font-medium">
+                              Standard Hero
+                            </span>
+                            <span className="block w-full text-center text-xs text-muted-foreground">
+                              Centered content with button
+                            </span>
+                          </Label>
+                        </div>
+
+                        <div className="relative">
+                          <RadioGroupItem
+                            value="Hero2"
+                            id="heroDesign2"
+                            className="sr-only peer"
+                          />
+                          <Label
+                            htmlFor="heroDesign2"
+                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                          >
+                            {/* Hero Design 2 Preview */}
+                            <div className="w-full h-32 bg-gray-100 rounded-md p-2 mb-2">
+                              <div className="flex justify-between h-full">
+                                <div className="w-1/2 flex flex-col justify-center space-y-1">
+                                  <div className="w-full h-2 bg-gray-300 rounded-full"></div>
+                                  <div className="w-3/4 h-2 bg-gray-300 rounded-full"></div>
+                                  <div className="w-16 h-4 bg-blue-500 rounded-sm mt-2"></div>
+                                </div>
+                                <div className="w-5/12 bg-gray-300 rounded-md"></div>
+                              </div>
+                            </div>
+                            <span className="block w-full text-center font-medium">
+                              Split Hero
+                            </span>
+                            <span className="block w-full text-center text-xs text-muted-foreground">
+                              Text left, image right
+                            </span>
+                          </Label>
+                        </div>
+
+                        <div className="relative">
+                          <RadioGroupItem
+                            value="Hero3"
+                            id="heroDesign3"
+                            className="sr-only peer"
+                          />
+                          <Label
+                            htmlFor="heroDesign3"
+                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                          >
+                            {/* Hero Design 3 Preview */}
+                            <div className="w-full h-32 bg-gray-100 rounded-md p-2 mb-2">
+                              <div className="h-full flex flex-col justify-end pb-2">
+                                <div className="w-3/4 h-2 bg-gray-300 rounded-full mb-1"></div>
+                                <div className="w-1/2 h-2 bg-gray-300 rounded-full mb-2"></div>
+                                <div className="flex space-x-2">
+                                  <div className="w-16 h-4 bg-blue-500 rounded-sm"></div>
+                                  <div className="w-16 h-4 bg-gray-300 rounded-sm"></div>
+                                </div>
+                              </div>
+                            </div>
+                            <span className="block w-full text-center font-medium">
+                              Full-screen Hero
+                            </span>
+                            <span className="block w-full text-center text-xs text-muted-foreground">
+                              Bottom-aligned with dual CTAs
+                            </span>
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    <Separator className="my-4" />
+
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="heroBackground">Hero Background Color</Label>
@@ -610,7 +720,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
 
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
-                        <Label htmlFor="heroOverlayColor">Overlay Color</Label>
+                        <Label htmlFor="heroOverlayColor">Hero Overlay Color</Label>
                         <ColorPicker
                           id="heroOverlayColor"
                           value={theme.heroOverlayColor}
@@ -618,7 +728,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="heroOverlayOpacity">Overlay Opacity</Label>
+                        <Label htmlFor="heroOverlayOpacity">Hero Overlay Opacity</Label>
                         <Input
                           id="heroOverlayOpacity"
                           name="heroOverlayOpacity"
@@ -626,7 +736,7 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                           min="0"
                           max="1"
                           step="0.1"
-                          value={theme.heroOverlayOpacity !== null ? theme.heroOverlayOpacity : ""}
+                          value={safeString(theme.heroOverlayOpacity)}
                           onChange={handleChange}
                           placeholder="0.6"
                         />
@@ -686,14 +796,13 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                         />
                       </div>
                     </div>
-                          </AccordionContent>
-            </AccordionItem>
-
-            {/* Layout Dimensions */}
-            <AccordionItem value="dimensions">
-              <AccordionTrigger>Layout Dimensions</AccordionTrigger>
-              <AccordionContent className="space-y-4">
-             <div className="grid gap-4 md:grid-cols-3">
+                  </AccordionContent>
+                </AccordionItem>
+                {/* Layout Dimensions */}
+                <AccordionItem value="dimensions">
+                  <AccordionTrigger>Layout Dimensions</AccordionTrigger>
+                  <AccordionContent className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-3">
                       <div className="space-y-2">
                         <Label htmlFor="containerWidth">Container Width</Label>
                         <Input
@@ -725,13 +834,13 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
                         />
                       </div>
                     </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </CardContent>
-      </Card>
-    </TabsContent>
-        {/* Colors Tab */ }
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        {/* Colors Tab */}
         <TabsContent value="colors" className="space-y-6">
           <Card>
             <CardContent className="pt-6">
@@ -836,333 +945,333 @@ export function ThemeEditor({ themeId, isNew = false }: ThemeEditorProps) {
           </Card>
         </TabsContent>
 
-     <TabsContent value="typography" className="space-y-6">
-  <Card>
-    <CardContent className="pt-6">
-      <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="bodyFont">Body Font</Label>
-            <select
-              id="bodyFont"
-              name="bodyFont"
-              value={safeString(theme.bodyFont)}
-              onChange={handleChange as any}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <optgroup label="System Fonts">
-                {groupedFontOptions['System']?.map((font) => (
-                  <option key={font.value} value={font.value}>{font.label}</option>
-                ))}
-              </optgroup>
-              <optgroup label="Google Fonts">
-                {groupedFontOptions['Google']?.map((font) => (
-                  <option key={font.value} value={font.value}>{font.label}</option>
-                ))}
-              </optgroup>
-            </select>
-            <p className="text-xs text-muted-foreground mt-1">
-              System fonts work instantly. Google fonts may require adding a link tag to your HTML.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="headingFont">Heading Font</Label>
-            <select
-              id="headingFont"
-              name="headingFont"
-              value={safeString(theme.headingFont)}
-              onChange={handleChange as any}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <optgroup label="System Fonts">
-                {groupedFontOptions['System']?.map((font) => (
-                  <option key={font.value} value={font.value}>{font.label}</option>
-                ))}
-              </optgroup>
-              <optgroup label="Google Fonts">
-                {groupedFontOptions['Google']?.map((font) => (
-                  <option key={font.value} value={font.value}>{font.label}</option>
-                ))}
-              </optgroup>
-            </select>
-          </div>
-        </div>
+        <TabsContent value="typography" className="space-y-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="bodyFont">Body Font</Label>
+                    <select
+                      id="bodyFont"
+                      name="bodyFont"
+                      value={safeString(theme.bodyFont)}
+                      onChange={handleChange as any}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <optgroup label="System Fonts">
+                        {groupedFontOptions['System']?.map((font) => (
+                          <option key={font.value} value={font.value}>{font.label}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Google Fonts">
+                        {groupedFontOptions['Google']?.map((font) => (
+                          <option key={font.value} value={font.value}>{font.label}</option>
+                        ))}
+                      </optgroup>
+                    </select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      System fonts work instantly. Google fonts may require adding a link tag to your HTML.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="headingFont">Heading Font</Label>
+                    <select
+                      id="headingFont"
+                      name="headingFont"
+                      value={safeString(theme.headingFont)}
+                      onChange={handleChange as any}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <optgroup label="System Fonts">
+                        {groupedFontOptions['System']?.map((font) => (
+                          <option key={font.value} value={font.value}>{font.label}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Google Fonts">
+                        {groupedFontOptions['Google']?.map((font) => (
+                          <option key={font.value} value={font.value}>{font.label}</option>
+                        ))}
+                      </optgroup>
+                    </select>
+                  </div>
+                </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="baseFontSize">Base Font Size</Label>
-            <Input
-              id="baseFontSize"
-              name="baseFontSize"
-              value={safeString(theme.baseFontSize)}
-              onChange={handleChange}
-              placeholder="16px"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="headingFontSize">Heading Font Size</Label>
-            <Input
-              id="headingFontSize"
-              name="headingFontSize"
-              value={safeString(theme.headingFontSize)}
-              onChange={handleChange}
-              placeholder="3rem"
-            />
-          </div>
-        </div>
-        
-        {/* Font Preview Section */}
-        <div className="mt-6 p-4 border rounded-md">
-          <h3 className="text-sm font-medium mb-2">Font Preview</h3>
-          <div className="space-y-4">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Body Font</p>
-              <div style={{ fontFamily: theme.bodyFont }}>
-                <p>The quick brown fox jumps over the lazy dog.</p>
-                <p style={{ fontSize: "0.875rem" }}>ABCDEFGHIJKLMNOPQRSTUVWXYZ</p>
-                <p style={{ fontSize: "0.875rem" }}>abcdefghijklmnopqrstuvwxyz</p>
-                <p style={{ fontSize: "0.875rem" }}>0123456789</p>
-              </div>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Heading Font</p>
-              <div style={{ fontFamily: theme.headingFont }}>
-                <p className="text-xl font-bold">The quick brown fox jumps over the lazy dog.</p>
-                <p className="font-bold">ABCDEFGHIJKLMNOPQRSTUVWXYZ</p>
-                <p className="font-bold">abcdefghijklmnopqrstuvwxyz</p>
-                <p className="font-bold">0123456789</p>
-              </div>
-            </div>
-          </div>
-        </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="baseFontSize">Base Font Size</Label>
+                    <Input
+                      id="baseFontSize"
+                      name="baseFontSize"
+                      value={safeString(theme.baseFontSize)}
+                      onChange={handleChange}
+                      placeholder="16px"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="headingFontSize">Heading Font Size</Label>
+                    <Input
+                      id="headingFontSize"
+                      name="headingFontSize"
+                      value={safeString(theme.headingFontSize)}
+                      onChange={handleChange}
+                      placeholder="3rem"
+                    />
+                  </div>
+                </div>
 
-        {/* Font Import Helper */}
-        <div className="bg-muted/50 p-4 rounded-md">
-          <h3 className="text-sm font-medium mb-2">Font Import Code</h3>
-          <p className="text-xs text-muted-foreground mb-3">
-            If you're using Google Fonts, add this code to your HTML head section:
-          </p>
-          <div className="bg-muted p-3 rounded border text-sm font-mono overflow-x-auto">
-            {theme.bodyFont.includes('Inter') || theme.headingFont.includes('Inter') ? 
-              '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">\n' : ''}
-            {theme.bodyFont.includes('Roboto') || theme.headingFont.includes('Roboto') ? 
-              '<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">\n' : ''}
-            {theme.bodyFont.includes('Open Sans') || theme.headingFont.includes('Open Sans') ? 
-              '<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">\n' : ''}
-            {theme.bodyFont.includes('Lato') || theme.headingFont.includes('Lato') ? 
-              '<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet">\n' : ''}
-            {theme.bodyFont.includes('Montserrat') || theme.headingFont.includes('Montserrat') ? 
-              '<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">\n' : ''}
-            {theme.bodyFont.includes('Poppins') || theme.headingFont.includes('Poppins') ? 
-              '<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">\n' : ''}
-            {theme.bodyFont.includes('Playfair Display') || theme.headingFont.includes('Playfair Display') ? 
-              '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">\n' : ''}
-            {theme.bodyFont.includes('Merriweather') || theme.headingFont.includes('Merriweather') ? 
-              '<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">\n' : ''}
-            {theme.bodyFont.includes('Source Code Pro') || theme.headingFont.includes('Source Code Pro') ? 
-              '<link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">\n' : ''}
-            {theme.bodyFont.includes('JetBrains Mono') || theme.headingFont.includes('JetBrains Mono') ? 
-              '<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">' : ''}
-            {!theme.bodyFont.includes('Google') && !theme.headingFont.includes('Google') && 
-             !(theme.bodyFont.includes('Inter') || theme.headingFont.includes('Inter') ||
-               theme.bodyFont.includes('Roboto') || theme.headingFont.includes('Roboto') ||
-               theme.bodyFont.includes('Open Sans') || theme.headingFont.includes('Open Sans') ||
-               theme.bodyFont.includes('Lato') || theme.headingFont.includes('Lato') ||
-               theme.bodyFont.includes('Montserrat') || theme.headingFont.includes('Montserrat') ||
-               theme.bodyFont.includes('Poppins') || theme.headingFont.includes('Poppins') ||
-               theme.bodyFont.includes('Playfair Display') || theme.headingFont.includes('Playfair Display') ||
-               theme.bodyFont.includes('Merriweather') || theme.headingFont.includes('Merriweather') ||
-               theme.bodyFont.includes('Source Code Pro') || theme.headingFont.includes('Source Code Pro') ||
-               theme.bodyFont.includes('JetBrains Mono') || theme.headingFont.includes('JetBrains Mono')) ? 
-              '/* No Google Fonts selected - system fonts work without imports */' : ''}
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            System fonts don't need to be imported as they're already available on users' devices.
-          </p>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-</TabsContent>
-  {/* Components Tab */ }
-  <TabsContent value="components" className="space-y-6">
-    <Card>
-      <CardContent className="pt-6">
-        <Accordion type="multiple" className="w-full">
-          {/* Buttons */}
-          <AccordionItem value="buttons">
-            <AccordionTrigger>Buttons</AccordionTrigger>
-            <AccordionContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="buttonPrimaryColor">Primary Button Color</Label>
-                  <ColorPicker
-                    id="buttonPrimaryColor"
-                    value={theme.buttonPrimaryColor}
-                    onChange={(value) => handleColorChange("buttonPrimaryColor", value)}
-                  />
+                {/* Font Preview Section */}
+                <div className="mt-6 p-4 border rounded-md">
+                  <h3 className="text-sm font-medium mb-2">Font Preview</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Body Font</p>
+                      <div style={{ fontFamily: theme.bodyFont }}>
+                        <p>The quick brown fox jumps over the lazy dog.</p>
+                        <p style={{ fontSize: "0.875rem" }}>ABCDEFGHIJKLMNOPQRSTUVWXYZ</p>
+                        <p style={{ fontSize: "0.875rem" }}>abcdefghijklmnopqrstuvwxyz</p>
+                        <p style={{ fontSize: "0.875rem" }}>0123456789</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Heading Font</p>
+                      <div style={{ fontFamily: theme.headingFont }}>
+                        <p className="text-xl font-bold">The quick brown fox jumps over the lazy dog.</p>
+                        <p className="font-bold">ABCDEFGHIJKLMNOPQRSTUVWXYZ</p>
+                        <p className="font-bold">abcdefghijklmnopqrstuvwxyz</p>
+                        <p className="font-bold">0123456789</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="buttonSecondaryColor">Secondary Button Color</Label>
-                  <ColorPicker
-                    id="buttonSecondaryColor"
-                    value={theme.buttonSecondaryColor}
-                    onChange={(value) => handleColorChange("buttonSecondaryColor", value)}
-                  />
-                </div>
-              </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="buttonTextColor">Button Text Color</Label>
-                  <ColorPicker
-                    id="buttonTextColor"
-                    value={theme.buttonTextColor}
-                    onChange={(value) => handleColorChange("buttonTextColor", value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="buttonBorderRadius">Button Border Radius</Label>
-                  <Input
-                    id="buttonBorderRadius"
-                    name="buttonBorderRadius"
-                    value={safeString(theme.buttonBorderRadius)}
-                    onChange={handleChange}
-                    placeholder="0.375rem"
-                  />
+                {/* Font Import Helper */}
+                <div className="bg-muted/50 p-4 rounded-md">
+                  <h3 className="text-sm font-medium mb-2">Font Import Code</h3>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    If you're using Google Fonts, add this code to your HTML head section:
+                  </p>
+                  <div className="bg-muted p-3 rounded border text-sm font-mono overflow-x-auto">
+                    {theme.bodyFont.includes('Inter') || theme.headingFont.includes('Inter') ?
+                      '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">\n' : ''}
+                    {theme.bodyFont.includes('Roboto') || theme.headingFont.includes('Roboto') ?
+                      '<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">\n' : ''}
+                    {theme.bodyFont.includes('Open Sans') || theme.headingFont.includes('Open Sans') ?
+                      '<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">\n' : ''}
+                    {theme.bodyFont.includes('Lato') || theme.headingFont.includes('Lato') ?
+                      '<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet">\n' : ''}
+                    {theme.bodyFont.includes('Montserrat') || theme.headingFont.includes('Montserrat') ?
+                      '<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">\n' : ''}
+                    {theme.bodyFont.includes('Poppins') || theme.headingFont.includes('Poppins') ?
+                      '<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">\n' : ''}
+                    {theme.bodyFont.includes('Playfair Display') || theme.headingFont.includes('Playfair Display') ?
+                      '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">\n' : ''}
+                    {theme.bodyFont.includes('Merriweather') || theme.headingFont.includes('Merriweather') ?
+                      '<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">\n' : ''}
+                    {theme.bodyFont.includes('Source Code Pro') || theme.headingFont.includes('Source Code Pro') ?
+                      '<link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">\n' : ''}
+                    {theme.bodyFont.includes('JetBrains Mono') || theme.headingFont.includes('JetBrains Mono') ?
+                      '<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">' : ''}
+                    {!theme.bodyFont.includes('Google') && !theme.headingFont.includes('Google') &&
+                      !(theme.bodyFont.includes('Inter') || theme.headingFont.includes('Inter') ||
+                        theme.bodyFont.includes('Roboto') || theme.headingFont.includes('Roboto') ||
+                        theme.bodyFont.includes('Open Sans') || theme.headingFont.includes('Open Sans') ||
+                        theme.bodyFont.includes('Lato') || theme.headingFont.includes('Lato') ||
+                        theme.bodyFont.includes('Montserrat') || theme.headingFont.includes('Montserrat') ||
+                        theme.bodyFont.includes('Poppins') || theme.headingFont.includes('Poppins') ||
+                        theme.bodyFont.includes('Playfair Display') || theme.headingFont.includes('Playfair Display') ||
+                        theme.bodyFont.includes('Merriweather') || theme.headingFont.includes('Merriweather') ||
+                        theme.bodyFont.includes('Source Code Pro') || theme.headingFont.includes('Source Code Pro') ||
+                        theme.bodyFont.includes('JetBrains Mono') || theme.headingFont.includes('JetBrains Mono')) ?
+                      '/* No Google Fonts selected - system fonts work without imports */' : ''}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    System fonts don't need to be imported as they're already available on users' devices.
+                  </p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        {/* Components Tab */}
+        <TabsContent value="components" className="space-y-6">
+          <Card>
+            <CardContent className="pt-6">
+              <Accordion type="multiple" className="w-full">
+                {/* Buttons */}
+                <AccordionItem value="buttons">
+                  <AccordionTrigger>Buttons</AccordionTrigger>
+                  <AccordionContent className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="buttonPrimaryColor">Primary Button Color</Label>
+                        <ColorPicker
+                          id="buttonPrimaryColor"
+                          value={theme.buttonPrimaryColor}
+                          onChange={(value) => handleColorChange("buttonPrimaryColor", value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="buttonSecondaryColor">Secondary Button Color</Label>
+                        <ColorPicker
+                          id="buttonSecondaryColor"
+                          value={theme.buttonSecondaryColor}
+                          onChange={(value) => handleColorChange("buttonSecondaryColor", value)}
+                        />
+                      </div>
+                    </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="buttonPadding">Button Padding</Label>
-                <Input
-                  id="buttonPadding"
-                  name="buttonPadding"
-                  value={safeString(theme.buttonPadding)}
-                  onChange={handleChange}
-                  placeholder="0.5rem 1rem"
-                />
-              </div>
-            </AccordionContent>
-          </AccordionItem>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="buttonTextColor">Button Text Color</Label>
+                        <ColorPicker
+                          id="buttonTextColor"
+                          value={theme.buttonTextColor}
+                          onChange={(value) => handleColorChange("buttonTextColor", value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="buttonBorderRadius">Button Border Radius</Label>
+                        <Input
+                          id="buttonBorderRadius"
+                          name="buttonBorderRadius"
+                          value={safeString(theme.buttonBorderRadius)}
+                          onChange={handleChange}
+                          placeholder="0.375rem"
+                        />
+                      </div>
+                    </div>
 
-          {/* Form Inputs */}
-          <AccordionItem value="inputs">
-            <AccordionTrigger>Form Inputs</AccordionTrigger>
-            <AccordionContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="inputBackground">Input Background</Label>
-                  <ColorPicker
-                    id="inputBackground"
-                    value={theme.inputBackground}
-                    onChange={(value) => handleColorChange("inputBackground", value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="inputBorderColor">Input Border Color</Label>
-                  <ColorPicker
-                    id="inputBorderColor"
-                    value={theme.inputBorderColor}
-                    onChange={(value) => handleColorChange("inputBorderColor", value)}
-                  />
-                </div>
-              </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="buttonPadding">Button Padding</Label>
+                      <Input
+                        id="buttonPadding"
+                        name="buttonPadding"
+                        value={safeString(theme.buttonPadding)}
+                        onChange={handleChange}
+                        placeholder="0.5rem 1rem"
+                      />
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="inputTextColor">Input Text Color</Label>
-                  <ColorPicker
-                    id="inputTextColor"
-                    value={theme.inputTextColor}
-                    onChange={(value) => handleColorChange("inputTextColor", value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="inputFocusColor">Input Focus Color</Label>
-                  <ColorPicker
-                    id="inputFocusColor"
-                    value={theme.inputFocusColor}
-                    onChange={(value) => handleColorChange("inputFocusColor", value)}
-                  />
-                </div>
-              </div>
+                {/* Form Inputs */}
+                <AccordionItem value="inputs">
+                  <AccordionTrigger>Form Inputs</AccordionTrigger>
+                  <AccordionContent className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="inputBackground">Input Background</Label>
+                        <ColorPicker
+                          id="inputBackground"
+                          value={theme.inputBackground}
+                          onChange={(value) => handleColorChange("inputBackground", value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="inputBorderColor">Input Border Color</Label>
+                        <ColorPicker
+                          id="inputBorderColor"
+                          value={theme.inputBorderColor}
+                          onChange={(value) => handleColorChange("inputBorderColor", value)}
+                        />
+                      </div>
+                    </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="inputBorderRadius">Input Border Radius</Label>
-                <Input
-                  id="inputBorderRadius"
-                  name="inputBorderRadius"
-                  value={safeString(theme.inputBorderRadius)}
-                  onChange={handleChange}
-                  placeholder="0.375rem"
-                />
-              </div>
-            </AccordionContent>
-          </AccordionItem>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="inputTextColor">Input Text Color</Label>
+                        <ColorPicker
+                          id="inputTextColor"
+                          value={theme.inputTextColor}
+                          onChange={(value) => handleColorChange("inputTextColor", value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="inputFocusColor">Input Focus Color</Label>
+                        <ColorPicker
+                          id="inputFocusColor"
+                          value={theme.inputFocusColor}
+                          onChange={(value) => handleColorChange("inputFocusColor", value)}
+                        />
+                      </div>
+                    </div>
 
-          {/* Cards */}
-          <AccordionItem value="cards">
-            <AccordionTrigger>Cards</AccordionTrigger>
-            <AccordionContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="cardBackground">Card Background</Label>
-                  <ColorPicker
-                    id="cardBackground"
-                    value={theme.cardBackground}
-                    onChange={(value) => handleColorChange("cardBackground", value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cardBorderColor">Card Border Color</Label>
-                  <ColorPicker
-                    id="cardBorderColor"
-                    value={theme.cardBorderColor}
-                    onChange={(value) => handleColorChange("cardBorderColor", value)}
-                  />
-                </div>
-              </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="inputBorderRadius">Input Border Radius</Label>
+                      <Input
+                        id="inputBorderRadius"
+                        name="inputBorderRadius"
+                        value={safeString(theme.inputBorderRadius)}
+                        onChange={handleChange}
+                        placeholder="0.375rem"
+                      />
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="cardBorderRadius">Card Border Radius</Label>
-                  <Input
-                    id="cardBorderRadius"
-                    name="cardBorderRadius"
-                    value={safeString(theme.cardBorderRadius)}
-                    onChange={handleChange}
-                    placeholder="0.5rem"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cardShadow">Card Shadow</Label>
-                  <Input
-                    id="cardShadow"
-                    name="cardShadow"
-                    value={safeString(theme.cardShadow)}
-                    onChange={handleChange}
-                    placeholder="0 2px 4px rgba(0,0,0,0.1)"
-                  />
-                </div>
-              </div>
+                {/* Cards */}
+                <AccordionItem value="cards">
+                  <AccordionTrigger>Cards</AccordionTrigger>
+                  <AccordionContent className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="cardBackground">Card Background</Label>
+                        <ColorPicker
+                          id="cardBackground"
+                          value={theme.cardBackground}
+                          onChange={(value) => handleColorChange("cardBackground", value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="cardBorderColor">Card Border Color</Label>
+                        <ColorPicker
+                          id="cardBorderColor"
+                          value={theme.cardBorderColor}
+                          onChange={(value) => handleColorChange("cardBorderColor", value)}
+                        />
+                      </div>
+                    </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="cardPadding">Card Padding</Label>
-                <Input
-                  id="cardPadding"
-                  name="cardPadding"
-                  value={safeString(theme.cardPadding)}
-                  onChange={handleChange}
-                  placeholder="1rem"
-                />
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </CardContent>
-    </Card>
-  </TabsContent>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="cardBorderRadius">Card Border Radius</Label>
+                        <Input
+                          id="cardBorderRadius"
+                          name="cardBorderRadius"
+                          value={safeString(theme.cardBorderRadius)}
+                          onChange={handleChange}
+                          placeholder="0.5rem"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="cardShadow">Card Shadow</Label>
+                        <Input
+                          id="cardShadow"
+                          name="cardShadow"
+                          value={safeString(theme.cardShadow)}
+                          onChange={handleChange}
+                          placeholder="0 2px 4px rgba(0,0,0,0.1)"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="cardPadding">Card Padding</Label>
+                      <Input
+                        id="cardPadding"
+                        name="cardPadding"
+                        value={safeString(theme.cardPadding)}
+                        onChange={handleChange}
+                        placeholder="1rem"
+                      />
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs >
     </div >
   )

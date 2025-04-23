@@ -37,6 +37,7 @@ export interface Theme {
   footerShowSocial?: boolean
   footerShowNewsletter?: boolean
   footerColumns?: any
+  heroDesgin?: string
   heroBackground?: string
   heroBackgroundImage?: string
   heroTextColor?: string

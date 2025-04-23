@@ -35,6 +35,7 @@ export interface Theme {
   footerShowSocial?: boolean;
   footerShowNewsletter?: boolean;
   footerColumns?: any;
+  heroDesign: string;
   heroBackground?: string;
   heroBackgroundImage?: string;
   heroTextColor?: string;

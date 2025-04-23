@@ -1,5 +1,4 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 import { Banner as BannerType } from '@/types/banner';
 import { BannerComponent } from './Banner';
@@ -18,7 +17,7 @@ interface PrismaBanner {
 }
 
 export function BannerList() {
-  const [banners, setBanners] = useState<BannerType[]>([]);
+  const [banner, setBanner] = useState<BannerType | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -29,22 +28,25 @@ export function BannerList() {
           throw new Error('Failed to fetch banners');
         }
         const data: PrismaBanner[] = await response.json();
-        
-        // Transform Prisma banners to component banners
-        const transformedBanners: BannerType[] = data
-          .filter(banner => banner.isActive)
-          .map(banner => ({
-            id: banner.id.toString(),
-            message: banner.content,
-            type: banner.type as BannerType['type'],
+
+        // Filter for active banners with top position
+        const activeBanners = data
+          .filter(banner => banner.isActive && banner.position === 'top');
+
+        // Take only the first banner if any exist
+        if (activeBanners.length > 0) {
+          const firstBanner = activeBanners[0];
+          setBanner({
+            id: firstBanner.id.toString(),
+            message: firstBanner.content,
+            type: firstBanner.type as BannerType['type'],
             dismissible: true,
-            isActive: banner.isActive,
-            position: banner.position as 'top' | 'bottom',
-            createdAt: banner.createdAt,
-            updatedAt: banner.updatedAt
-          }));
-        
-        setBanners(transformedBanners);
+            isActive: firstBanner.isActive,
+            position: firstBanner.position as 'top' | 'bottom',
+            createdAt: firstBanner.createdAt,
+            updatedAt: firstBanner.updatedAt
+          });
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch banners');
         console.error('Error fetching banners:', err);
@@ -64,29 +66,15 @@ export function BannerList() {
 
   return (
     <>
-      {banners
-        .filter(banner => banner.position === 'top')
-        .map(banner => (
-          <BannerComponent
-            key={banner.id}
-            banner={banner}
-            onClose={() => {
-              setBanners(banners.filter(b => b.id !== banner.id));
-            }}
-          />
-        ))}
-      <div className="flex-grow">{/* Main content goes here */}</div>
-      {banners
-        .filter(banner => banner.position === 'bottom')
-        .map(banner => (
-          <BannerComponent
-            key={banner.id}
-            banner={banner}
-            onClose={() => {
-              setBanners(banners.filter(b => b.id !== banner.id));
-            }}
-          />
-        ))}
+      {banner && (
+        <BannerComponent
+          key={banner.id}
+          banner={banner}
+          onClose={() => {
+            setBanner(null);
+          }}
+        />
+      )}
     </>
   );
-} 
+}

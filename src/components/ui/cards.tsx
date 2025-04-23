@@ -57,7 +57,7 @@ export interface FeatureCardProps {
 }
 
 export function FeatureCard({ id, title, description, icon, link, index = 0 }: FeatureCardProps) {
-  const context =useThemeContext() 
+  const context = useThemeContext()
   const theme = context?.theme || null
 
   // Animation variants for cards
@@ -156,7 +156,8 @@ export interface WSO2ApiData {
 }
 
 export function ApiCard({ api, index = 0 }: { api: WSO2ApiData; index?: number }) {
-  const context = useThemeContext
+  // The bug is here - we need to call useThemeContext() with parentheses
+  const context = useThemeContext()  // Fix: added () to call the hook properly
   const theme = context?.theme || null
 
   // Animation variants for cards
@@ -173,7 +174,106 @@ export function ApiCard({ api, index = 0 }: { api: WSO2ApiData; index?: number }
     }),
   }
 
-  if (!theme) return null
+  // Provide a fallback for when theme is null
+  if (!theme) {
+    // Instead of returning null, provide a basic card without theme styling
+    return (
+      <motion.div
+        variants={cardVariants}
+        initial="hidden"
+        animate="visible"
+        custom={index}
+      >
+        <div className="border rounded-lg p-4 bg-white shadow h-full">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              {api.hasThumbnail && api.thumbnailUrl ? (
+                <img
+                  src={api.thumbnailUrl || "/placeholder.svg"}
+                  alt={`${api.name} thumbnail`}
+                  className="w-12 h-12 object-contain rounded-md mb-2"
+
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-md mb-2 flex items-center justify-center text-xl font-bold bg-orange-500 text-white">
+                  {api.name.charAt(0)}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center">
+              {api.avgRating && (
+                <div className="flex items-center mr-3">
+                  <Star className="h-4 w-4 text-yellow-400 mr-1" />
+                  <span className="text-sm font-medium">{api.avgRating}</span>
+                </div>
+              )}
+              <Badge
+                className="flex items-center gap-1"
+                style={{
+                  backgroundColor: "#10b981",
+                  color: "#ffffff",
+                }}
+              >
+                <Check className="h-4 w-4" />
+                {api.lifeCycleStatus}
+              </Badge>
+            </div>
+          </div>
+
+          <h3 className="text-xl font-semibold mb-1">
+            {api.name}
+          </h3>
+
+          <div className="flex items-center text-sm mb-2 opacity-75">
+            <span>v{api.version}</span>
+            <span className="mx-2">•</span>
+            <span>{api.provider}</span>
+          </div>
+
+          <p className="text-base flex-grow mb-4">
+            {api.description}
+          </p>
+
+          {api.tags && api.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {api.tags.slice(0, 3).map((tag) => (
+                <Badge
+                  key={tag}
+                  variant="outline"
+                  className="flex items-center gap-1"
+                >
+                  <Tag className="h-3 w-3" />
+                  {tag}
+                </Badge>
+              ))}
+              {api.tags.length > 3 && (
+                <Badge variant="outline">+{api.tags.length - 3}</Badge>
+              )}
+            </div>
+          )}
+
+          <div className="mt-auto pt-4 flex items-center justify-between">
+            <div className="text-xs opacity-60">
+              {api.createdTime && (
+                <div>Created: {new Date(api.createdTime).toLocaleDateString()}</div>
+              )}
+            </div>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="ml-auto"
+            >
+              <a href={`/apis/${api.id}`}>
+                <ExternalLink className="h-4 w-4 mr-1" />
+                View API
+              </a>
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
 
   // Format date to be more readable
   const formatDate = (dateString?: string) => {
@@ -340,18 +440,6 @@ export function ApiCard({ api, index = 0 }: { api: WSO2ApiData; index?: number }
             </a>
           </Button>
         </div>
-
-        {api.monetization?.enabled && (
-          <div
-            className="absolute top-3 right-3 text-xs font-semibold px-2 py-1 rounded"
-            style={{
-              backgroundColor: theme.accentColor || "#f97316",
-              color: "#ffffff",
-            }}
-          >
-            Premium
-          </div>
-        )}
       </Card>
     </motion.div>
   )
