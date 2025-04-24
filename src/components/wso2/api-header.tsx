@@ -1,3 +1,5 @@
+
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -6,8 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { FileText, Code, Info } from "lucide-react"
-import { useThemeContext } from "@/providers/ThemeProvider"
+import { FileText, Code, Info } from 'lucide-react'
 
 interface ApiDocumentationProps {
   swagger: any
@@ -17,8 +18,6 @@ export function ApiDocumentation({ swagger }: ApiDocumentationProps) {
   const [paths, setPaths] = useState<any[]>([])
   const [definitions, setDefinitions] = useState<any[]>([])
   const [info, setInfo] = useState<any>(null)
-
-  const { theme } = useThemeContext()
 
   useEffect(() => {
     if (swagger) {
@@ -46,34 +45,17 @@ export function ApiDocumentation({ swagger }: ApiDocumentationProps) {
   }, [swagger])
 
   const getMethodColor = (method: string) => {
-    if (!theme) {
-      switch (method.toLowerCase()) {
-        case "get":
-          return "bg-blue-100 text-blue-800"
-        case "post":
-          return "bg-green-100 text-green-800"
-        case "put":
-          return "bg-amber-100 text-amber-800"
-        case "delete":
-          return "bg-red-100 text-red-800"
-        case "patch":
-          return "bg-purple-100 text-purple-800"
-        default:
-          return "bg-gray-100 text-gray-800"
-      }
-    }
-
     switch (method.toLowerCase()) {
       case "get":
-        return `bg-blue-100 text-${theme.primaryColor || "blue-800"}`
+        return "bg-blue-100 text-blue-800"
       case "post":
-        return `bg-green-100 text-${theme.successColor || "green-800"}`
+        return "bg-green-100 text-green-800"
       case "put":
-        return `bg-amber-100 text-${theme.warningColor || "amber-800"}`
+        return "bg-amber-100 text-amber-800"
       case "delete":
-        return `bg-red-100 text-${theme.errorColor || "red-800"}`
+        return "bg-red-100 text-red-800"
       case "patch":
-        return `bg-purple-100 text-${theme.accentColor || "purple-800"}`
+        return "bg-purple-100 text-purple-800"
       default:
         return "bg-gray-100 text-gray-800"
     }
@@ -81,24 +63,24 @@ export function ApiDocumentation({ swagger }: ApiDocumentationProps) {
 
   const formatSchemaType = (schema: any): string => {
     if (!schema) return "any"
-
+    
     if (schema.$ref) {
       // Extract the model name from the reference
       const refParts = schema.$ref.split("/")
       return refParts[refParts.length - 1]
     }
-
+    
     if (schema.type === "array") {
       if (schema.items) {
         return `array<${formatSchemaType(schema.items)}>`
       }
       return "array"
     }
-
+    
     if (schema.type === "object" && schema.properties) {
       return "object"
     }
-
+    
     return schema.type || "any"
   }
 
@@ -112,19 +94,8 @@ export function ApiDocumentation({ swagger }: ApiDocumentationProps) {
 
   return (
     <div>
-      <Tabs
-        defaultValue="endpoints"
-        style={{
-          color: theme?.textColor || "#333333",
-        }}
-      >
-        <TabsList
-          className="mb-4"
-          style={{
-            backgroundColor: theme?.secondaryColor + "20" || "#f1f5f9",
-            borderColor: theme?.borderColor || "#e5e7eb",
-          }}
-        >
+      <Tabs defaultValue="endpoints">
+        <TabsList className="mb-4">
           <TabsTrigger value="endpoints">
             <Code className="h-4 w-4 mr-2" />
             Endpoints
@@ -138,13 +109,15 @@ export function ApiDocumentation({ swagger }: ApiDocumentationProps) {
             API Info
           </TabsTrigger>
         </TabsList>
-
+        
         <TabsContent value="endpoints">
           {paths.length > 0 ? (
             <Accordion type="single" collapsible className="w-full">
               {paths.map((pathItem, index) => (
                 <AccordionItem key={index} value={`path-${index}`}>
-                  <AccordionTrigger className="font-mono text-sm">{pathItem.path}</AccordionTrigger>
+                  <AccordionTrigger className="font-mono text-sm">
+                    {pathItem.path}
+                  </AccordionTrigger>
                   <AccordionContent>
                     {pathItem.methods.map((methodItem, methodIndex) => (
                       <div key={methodIndex} className="mb-4 border rounded-md overflow-hidden">
@@ -158,17 +131,12 @@ export function ApiDocumentation({ swagger }: ApiDocumentationProps) {
                           {methodItem.details.description && (
                             <p className="text-sm text-gray-600 mb-3">{methodItem.details.description}</p>
                           )}
-
+                          
                           {/* Parameters */}
                           {methodItem.details.parameters && methodItem.details.parameters.length > 0 && (
                             <div className="mb-3">
                               <h4 className="text-sm font-medium mb-2">Parameters</h4>
-                              <Table
-                                style={{
-                                  color: theme?.textColor || "#333333",
-                                  borderColor: theme?.borderColor || "#e5e7eb",
-                                }}
-                              >
+                              <Table>
                                 <TableHeader>
                                   <TableRow>
                                     <TableHead>Name</TableHead>
@@ -185,7 +153,9 @@ export function ApiDocumentation({ swagger }: ApiDocumentationProps) {
                                       <TableCell>
                                         <Badge variant="outline">{param.in}</Badge>
                                       </TableCell>
-                                      <TableCell>{formatSchemaType(param.schema || { type: param.type })}</TableCell>
+                                      <TableCell>
+                                        {formatSchemaType(param.schema || { type: param.type })}
+                                      </TableCell>
                                       <TableCell>
                                         {param.required ? (
                                           <Badge variant="destructive">Required</Badge>
@@ -200,17 +170,12 @@ export function ApiDocumentation({ swagger }: ApiDocumentationProps) {
                               </Table>
                             </div>
                           )}
-
+                          
                           {/* Responses */}
                           {methodItem.details.responses && Object.keys(methodItem.details.responses).length > 0 && (
                             <div>
                               <h4 className="text-sm font-medium mb-2">Responses</h4>
-                              <Table
-                                style={{
-                                  color: theme?.textColor || "#333333",
-                                  borderColor: theme?.borderColor || "#e5e7eb",
-                                }}
-                              >
+                              <Table>
                                 <TableHeader>
                                   <TableRow>
                                     <TableHead>Code</TableHead>
@@ -219,29 +184,21 @@ export function ApiDocumentation({ swagger }: ApiDocumentationProps) {
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                  {Object.entries(methodItem.details.responses).map(
-                                    ([code, response]: [string, any], respIndex) => (
-                                      <TableRow key={respIndex}>
-                                        <TableCell>
-                                          <Badge
-                                            variant={
-                                              code.startsWith("2")
-                                                ? "default"
-                                                : code.startsWith("4") || code.startsWith("5")
-                                                  ? "destructive"
-                                                  : "outline"
-                                            }
-                                          >
-                                            {code}
-                                          </Badge>
-                                        </TableCell>
-                                        <TableCell>{response.description || "-"}</TableCell>
-                                        <TableCell>
-                                          {response.schema ? formatSchemaType(response.schema) : "-"}
-                                        </TableCell>
-                                      </TableRow>
-                                    ),
-                                  )}
+                                  {Object.entries(methodItem.details.responses).map(([code, response]: [string, any], respIndex) => (
+                                    <TableRow key={respIndex}>
+                                      <TableCell>
+                                        <Badge
+                                          variant={code.startsWith("2") ? "default" : code.startsWith("4") || code.startsWith("5") ? "destructive" : "outline"}
+                                        >
+                                          {code}
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell>{response.description || "-"}</TableCell>
+                                      <TableCell>
+                                        {response.schema ? formatSchemaType(response.schema) : "-"}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
                                 </TableBody>
                               </Table>
                             </div>
@@ -259,21 +216,18 @@ export function ApiDocumentation({ swagger }: ApiDocumentationProps) {
             </div>
           )}
         </TabsContent>
-
+        
         <TabsContent value="models">
           {definitions.length > 0 ? (
             <Accordion type="single" collapsible className="w-full">
               {definitions.map((definition, index) => (
                 <AccordionItem key={index} value={`definition-${index}`}>
-                  <AccordionTrigger>{definition.name}</AccordionTrigger>
+                  <AccordionTrigger>
+                    {definition.name}
+                  </AccordionTrigger>
                   <AccordionContent>
                     {definition.schema.properties ? (
-                      <Table
-                        style={{
-                          color: theme?.textColor || "#333333",
-                          borderColor: theme?.borderColor || "#e5e7eb",
-                        }}
-                      >
+                      <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Property</TableHead>
@@ -283,22 +237,20 @@ export function ApiDocumentation({ swagger }: ApiDocumentationProps) {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {Object.entries(definition.schema.properties).map(
-                            ([propName, propSchema]: [string, any], propIndex) => (
-                              <TableRow key={propIndex}>
-                                <TableCell className="font-mono text-xs">{propName}</TableCell>
-                                <TableCell>{formatSchemaType(propSchema)}</TableCell>
-                                <TableCell>
-                                  {definition.schema.required && definition.schema.required.includes(propName) ? (
-                                    <Badge variant="destructive">Required</Badge>
-                                  ) : (
-                                    <Badge variant="outline">Optional</Badge>
-                                  )}
-                                </TableCell>
-                                <TableCell className="text-sm">{propSchema.description || "-"}</TableCell>
-                              </TableRow>
-                            ),
-                          )}
+                          {Object.entries(definition.schema.properties).map(([propName, propSchema]: [string, any], propIndex) => (
+                            <TableRow key={propIndex}>
+                              <TableCell className="font-mono text-xs">{propName}</TableCell>
+                              <TableCell>{formatSchemaType(propSchema)}</TableCell>
+                              <TableCell>
+                                {definition.schema.required && definition.schema.required.includes(propName) ? (
+                                  <Badge variant="destructive">Required</Badge>
+                                ) : (
+                                  <Badge variant="outline">Optional</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-sm">{propSchema.description || "-"}</TableCell>
+                            </TableRow>
+                          ))}
                         </TableBody>
                       </Table>
                     ) : (
@@ -318,17 +270,10 @@ export function ApiDocumentation({ swagger }: ApiDocumentationProps) {
             </div>
           )}
         </TabsContent>
-
+        
         <TabsContent value="info">
           {info ? (
-            <Card
-              style={{
-                backgroundColor: theme?.cardBackground || "#ffffff",
-                borderColor: theme?.cardBorderColor || "#e5e7eb",
-                borderRadius: theme?.cardBorderRadius || "0.5rem",
-                boxShadow: theme?.cardShadow || "0 2px 4px rgba(0,0,0,0.1)",
-              }}
-            >
+            <Card>
               <CardHeader>
                 <CardTitle>{info.title}</CardTitle>
                 <CardDescription>Version: {info.version}</CardDescription>
@@ -340,21 +285,16 @@ export function ApiDocumentation({ swagger }: ApiDocumentationProps) {
                     <p className="text-sm">{info.description}</p>
                   </div>
                 )}
-
+                
                 {info.termsOfService && (
                   <div className="mb-4">
                     <h3 className="text-sm font-medium mb-1">Terms of Service</h3>
-                    <a
-                      href={info.termsOfService}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:underline"
-                    >
+                    <a href={info.termsOfService} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
                       {info.termsOfService}
                     </a>
                   </div>
                 )}
-
+                
                 {info.contact && (
                   <div className="mb-4">
                     <h3 className="text-sm font-medium mb-1">Contact</h3>
@@ -371,12 +311,7 @@ export function ApiDocumentation({ swagger }: ApiDocumentationProps) {
                       {info.contact.url && (
                         <p>
                           URL:{" "}
-                          <a
-                            href={info.contact.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline"
-                          >
+                          <a href={info.contact.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                             {info.contact.url}
                           </a>
                         </p>
@@ -384,7 +319,7 @@ export function ApiDocumentation({ swagger }: ApiDocumentationProps) {
                     </div>
                   </div>
                 )}
-
+                
                 {info.license && (
                   <div>
                     <h3 className="text-sm font-medium mb-1">License</h3>
@@ -393,12 +328,7 @@ export function ApiDocumentation({ swagger }: ApiDocumentationProps) {
                       {info.license.url && (
                         <p>
                           URL:{" "}
-                          <a
-                            href={info.license.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline"
-                          >
+                          <a href={info.license.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                             {info.license.url}
                           </a>
                         </p>

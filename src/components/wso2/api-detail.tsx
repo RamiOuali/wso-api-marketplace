@@ -2,20 +2,21 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/skeleton"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/skeleton"
-import { Tag, Star, Info, FileText, Code } from "lucide-react"
+import { Info, FileText, Code, Tag, Star } from "lucide-react"
 import { WSO2DevPortalService } from "@/lib/wso2/api-service"
 import type { WSO2AuthService } from "@/lib/wso2/auth-service"
 import { ApiDocumentation } from "@/components/wso2/api-documentation"
 import { SubscribeDialog } from "@/components/wso2/subscribe-dialog"
 import { ApiConsole } from "@/components/wso2/api-console"
+import { useThemeContext } from "@/providers/ThemeProvider"
 import type { API } from "@/lib/wso2/types"
 import { WSO2SubscriptionService } from "@/lib/wso2/subscription-service"
+import Image from "next/image"
 
 interface ApiDetailProps {
   baseUrl: string
@@ -25,6 +26,7 @@ interface ApiDetailProps {
 
 export function ApiDetail({ baseUrl, apiId, authService }: ApiDetailProps) {
   const router = useRouter()
+  const { theme } = useThemeContext()
   const [api, setApi] = useState<API | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
@@ -34,6 +36,7 @@ export function ApiDetail({ baseUrl, apiId, authService }: ApiDetailProps) {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
   const [isSubscribed, setIsSubscribed] = useState<boolean>(false)
   const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null)
+  const [activeTab, setActiveTab] = useState<string>("overview")
 
   useEffect(() => {
     setIsAuthenticated(authService?.isAuthenticated() || false)
@@ -209,7 +212,18 @@ export function ApiDetail({ baseUrl, apiId, authService }: ApiDetailProps) {
               </svg>
             </Button>
             <h1 className="text-3xl font-bold">{api.name}</h1>
-            <Badge variant={api.lifeCycleStatus === "PUBLISHED" ? "default" : "secondary"}>{api.lifeCycleStatus}</Badge>
+            <Badge
+              variant={api.lifeCycleStatus === "PUBLISHED" ? "default" : "secondary"}
+              style={{
+                backgroundColor:
+                  api.lifeCycleStatus === "PUBLISHED"
+                    ? theme?.successColor || "#10b981"
+                    : theme?.warningColor || "#f59e0b",
+                color: "#ffffff",
+              }}
+            >
+              {api.lifeCycleStatus}
+            </Badge>
           </div>
           <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
             <span>v{api.version}</span>
@@ -228,7 +242,15 @@ export function ApiDetail({ baseUrl, apiId, authService }: ApiDetailProps) {
         </div>
         <div className="flex gap-2">
           {isAuthenticated && !isSubscribed && (
-            <Button onClick={() => setSubscribeDialogOpen(true)}>Subscribe to API</Button>
+            <Button
+              onClick={() => setSubscribeDialogOpen(true)}
+              style={{
+                backgroundColor: theme?.buttonPrimaryColor || "#0070f3",
+                color: theme?.buttonTextColor || "#ffffff",
+              }}
+            >
+              Subscribe to API
+            </Button>
           )}
         </div>
       </div>
@@ -236,7 +258,13 @@ export function ApiDetail({ baseUrl, apiId, authService }: ApiDetailProps) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2">
           <Tabs defaultValue="overview">
-            <TabsList className="mb-4">
+            <TabsList
+              className="mb-4"
+              style={{
+                backgroundColor: theme?.secondaryColor + "20" || "#f1f5f9",
+                borderColor: theme?.borderColor || "#e5e7eb",
+              }}
+            >
               <TabsTrigger value="overview">
                 <Info className="h-4 w-4 mr-2" />
                 Overview
@@ -252,7 +280,15 @@ export function ApiDetail({ baseUrl, apiId, authService }: ApiDetailProps) {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
-              <Card>
+              <Card
+                className="mb-6"
+                style={{
+                  backgroundColor: theme?.cardBackground || "#ffffff",
+                  borderColor: theme?.cardBorderColor || "#e5e7eb",
+                  borderRadius: theme?.cardBorderRadius || "0.5rem",
+                  boxShadow: theme?.cardShadow || "0 2px 4px rgba(0,0,0,0.1)",
+                }}
+              >
                 <CardHeader>
                   <CardTitle>Description</CardTitle>
                 </CardHeader>
@@ -262,7 +298,15 @@ export function ApiDetail({ baseUrl, apiId, authService }: ApiDetailProps) {
               </Card>
 
               {api.tags && api.tags.length > 0 && (
-                <Card>
+                <Card
+                  className="mb-6"
+                  style={{
+                    backgroundColor: theme?.cardBackground || "#ffffff",
+                    borderColor: theme?.cardBorderColor || "#e5e7eb",
+                    borderRadius: theme?.cardBorderRadius || "0.5rem",
+                    boxShadow: theme?.cardShadow || "0 2px 4px rgba(0,0,0,0.1)",
+                  }}
+                >
                   <CardHeader>
                     <CardTitle>Tags</CardTitle>
                   </CardHeader>
@@ -280,7 +324,15 @@ export function ApiDetail({ baseUrl, apiId, authService }: ApiDetailProps) {
               )}
 
               {api.endpointURLs && api.endpointURLs.length > 0 && (
-                <Card>
+                <Card
+                  className="mb-6"
+                  style={{
+                    backgroundColor: theme?.cardBackground || "#ffffff",
+                    borderColor: theme?.cardBorderColor || "#e5e7eb",
+                    borderRadius: theme?.cardBorderRadius || "0.5rem",
+                    boxShadow: theme?.cardShadow || "0 2px 4px rgba(0,0,0,0.1)",
+                  }}
+                >
                   <CardHeader>
                     <CardTitle>Endpoints</CardTitle>
                   </CardHeader>
@@ -331,7 +383,15 @@ export function ApiDetail({ baseUrl, apiId, authService }: ApiDetailProps) {
               )}
 
               {api.businessInformation && (
-                <Card>
+                <Card
+                  className="mb-6"
+                  style={{
+                    backgroundColor: theme?.cardBackground || "#ffffff",
+                    borderColor: theme?.cardBorderColor || "#e5e7eb",
+                    borderRadius: theme?.cardBorderRadius || "0.5rem",
+                    boxShadow: theme?.cardShadow || "0 2px 4px rgba(0,0,0,0.1)",
+                  }}
+                >
                   <CardHeader>
                     <CardTitle>Business Information</CardTitle>
                   </CardHeader>
@@ -362,7 +422,15 @@ export function ApiDetail({ baseUrl, apiId, authService }: ApiDetailProps) {
             </TabsContent>
 
             <TabsContent value="documentation">
-              <Card>
+              <Card
+                className="mb-6"
+                style={{
+                  backgroundColor: theme?.cardBackground || "#ffffff",
+                  borderColor: theme?.cardBorderColor || "#e5e7eb",
+                  borderRadius: theme?.cardBorderRadius || "0.5rem",
+                  boxShadow: theme?.cardShadow || "0 2px 4px rgba(0,0,0,0.1)",
+                }}
+              >
                 <CardHeader>
                   <CardTitle>API Documentation</CardTitle>
                 </CardHeader>
@@ -379,7 +447,15 @@ export function ApiDetail({ baseUrl, apiId, authService }: ApiDetailProps) {
             </TabsContent>
 
             <TabsContent value="console">
-              <Card>
+              <Card
+                className="mb-6"
+                style={{
+                  backgroundColor: theme?.cardBackground || "#ffffff",
+                  borderColor: theme?.cardBorderColor || "#e5e7eb",
+                  borderRadius: theme?.cardBorderRadius || "0.5rem",
+                  boxShadow: theme?.cardShadow || "0 2px 4px rgba(0,0,0,0.1)",
+                }}
+              >
                 <CardHeader>
                   <CardTitle>API Console</CardTitle>
                   <CardDescription>Test the API endpoints directly from your browser</CardDescription>
@@ -418,7 +494,15 @@ export function ApiDetail({ baseUrl, apiId, authService }: ApiDetailProps) {
         </div>
 
         <div>
-          <Card className="mb-6">
+          <Card
+            className="mb-6"
+            style={{
+              backgroundColor: theme?.cardBackground || "#ffffff",
+              borderColor: theme?.cardBorderColor || "#e5e7eb",
+              borderRadius: theme?.cardBorderRadius || "0.5rem",
+              boxShadow: theme?.cardShadow || "0 2px 4px rgba(0,0,0,0.1)",
+            }}
+          >
             <CardHeader>
               <CardTitle>API Information</CardTitle>
             </CardHeader>
@@ -495,7 +579,15 @@ export function ApiDetail({ baseUrl, apiId, authService }: ApiDetailProps) {
           </Card>
 
           {api.monetization?.enabled && (
-            <Card>
+            <Card
+              className="mb-6"
+              style={{
+                backgroundColor: theme?.cardBackground || "#ffffff",
+                borderColor: theme?.cardBorderColor || "#e5e7eb",
+                borderRadius: theme?.cardBorderRadius || "0.5rem",
+                boxShadow: theme?.cardShadow || "0 2px 4px rgba(0,0,0,0.1)",
+              }}
+            >
               <CardHeader>
                 <CardTitle>Monetization</CardTitle>
               </CardHeader>

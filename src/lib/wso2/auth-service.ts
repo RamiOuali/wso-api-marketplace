@@ -189,4 +189,38 @@ export class WSO2AuthService {
     this.refreshToken = null
     this.tokenExpiry = 0
   }
+
+  /**
+   * Check if the user is authenticated with WSO2
+   * @returns Boolean indicating if the user is authenticated
+   */
+  static checkAuthentication(): boolean {
+    try {
+      const accessToken = localStorage.getItem("wso2_accessToken")
+      const tokenExpiry = localStorage.getItem("wso2_tokenExpiry")
+
+      if (!accessToken || !tokenExpiry) {
+        return false
+      }
+
+      // Check if token is expired
+      const expiryTime = Number.parseInt(tokenExpiry, 10)
+      if (Date.now() > expiryTime) {
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error("Error checking authentication:", error)
+      return false
+    }
+  }
+
+  /**
+   * Check if public mode is enabled
+   * @returns Boolean indicating if public mode is enabled
+   */
+  static isPublicMode(): boolean {
+    return localStorage.getItem("wso2_publicMode") === "true"
+  }
 }
