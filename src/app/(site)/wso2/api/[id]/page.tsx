@@ -1,63 +1,41 @@
- "use client"
+"use client"
 
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ApiDetail } from "@/components/wso2/api-detail"
-import { Loader2 } from 'lucide-react'
-import { WSO2AuthService } from "@/lib/wso2/auth-service"
+import { Loader2 } from "lucide-react"
+import { useAuth } from "@/providers/authContext"
 
 export default function ApiDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
-  const [baseUrl, setBaseUrl] = useState<string>("")
-  const [authService, setAuthService] = useState<WSO2AuthService | null>(null)
+  const { wso2AuthService, isAuthenticated, isLoading: authLoading } = useAuth()
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
+  const [baseUrl, setBaseUrl] = useState<string>("")
 
-  const { id } = React.use(params);
+  const { id } = React.use(params)
+
   useEffect(() => {
     try {
-      // Get connection details from localStorage
-      const storedBaseUrl = localStorage.getItem("wso2_baseUrl")
+      // Get base URL from localStorage or use default
+      const storedBaseUrl = localStorage.getItem("wso2_baseUrl") || "https://localhost:9443"
+      setBaseUrl(storedBaseUrl)
 
-      if (!storedBaseUrl) {
-        // Redirect to connection page if no base URL is found
+      // If not authenticated or no WSO2 auth service, redirect to WSO2 page
+      if (!authLoading && (!isAuthenticated || !wso2AuthService || !wso2AuthService.hasValidCredentials())) {
         router.push("/wso2")
         return
       }
 
-      setBaseUrl(storedBaseUrl)
-
-      // Check if we have client credentials
-      const clientId = localStorage.getItem("wso2_clientId")
-      const clientSecret = localStorage.getItem("wso2_clientSecret")
-      const accessToken = localStorage.getItem("wso2_accessToken")
-      const refreshToken = localStorage.getItem("wso2_refreshToken")
-      const tokenExpiry = localStorage.getItem("wso2_tokenExpiry")
-
-      if (clientId && clientSecret && accessToken && refreshToken && tokenExpiry) {
-        // Create auth service with stored credentials
-        const auth = new WSO2AuthService(storedBaseUrl)
-
-        // Set auth service properties
-        Object.assign(auth, {
-          clientId,
-          clientSecret,
-          accessToken,
-          refreshToken,
-          tokenExpiry: Number.parseInt(tokenExpiry, 10),
-        })
-
-        setAuthService(auth)
-      }
+      setLoading(false)
     } catch (err) {
       console.error("Error initializing API detail page:", err)
       setError("Failed to initialize API detail page. Please try again.")
-    } finally {
       setLoading(false)
     }
-  }, [router])
+  }, [router, wso2AuthService, isAuthenticated, authLoading])
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="container mx-auto py-8 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -73,5 +51,5 @@ export default function ApiDetailPage({ params }: { params: Promise<{ id: string
     )
   }
 
-  return <ApiDetail baseUrl={baseUrl} apiId={id} WSO2AuthService={authService} />;
+  return <ApiDetail baseUrl={baseUrl} apiId={id} WSO2AuthService={wso2AuthService} />
 }

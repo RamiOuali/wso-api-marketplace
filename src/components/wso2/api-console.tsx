@@ -27,7 +27,6 @@ interface ApiConsoleProps {
 }
 
 export function ApiConsole({ baseUrl, api, authService, applicationId }: ApiConsoleProps) {
-  const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [apiKey, setApiKey] = useState<string | null>(null)
   const [keyType, setKeyType] = useState<string>("PRODUCTION")
@@ -45,10 +44,10 @@ export function ApiConsole({ baseUrl, api, authService, applicationId }: ApiCons
   const [isSendingRequest, setIsSendingRequest] = useState<boolean>(false)
   const [endpoints, setEndpoints] = useState<any[]>([])
   const [debugInfo, setDebugInfo] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<string>("console")
+  const [activeTab, setActiveTab] = useState<string>("endpoints")
+  const [selectedEndpointDetails, setSelectedEndpointDetails] = useState<any>(null)
   const [curlCommand, setCurlCommand] = useState<string>("")
 
-  // Use theme context
   const { theme } = useThemeContext()
 
   // Extract endpoints from API swagger
@@ -56,73 +55,27 @@ export function ApiConsole({ baseUrl, api, authService, applicationId }: ApiCons
     if (api && api.apiDefinition) {
       try {
         const apiDefinition = typeof api.apiDefinition === "string" ? JSON.parse(api.apiDefinition) : api.apiDefinition
-
         const paths = apiDefinition.paths || {}
         const extractedEndpoints = Object.entries(paths).map(([path, methods]: [string, any]) => ({
           path,
           methods: Object.entries(methods).map(([method, details]: [string, any]) => ({
             method: method.toUpperCase(),
             details,
+            summary: details.summary || path,
+            description: details.description || "",
+            parameters: details.parameters || [],
+            requestBody: details.requestBody,
+            responses: details.responses || {},
           })),
         }))
 
         setEndpoints(extractedEndpoints)
-
-        // Set default endpoint and method if available
-        if (extractedEndpoints.length > 0) {
-          setSelectedEndpoint(extractedEndpoints[0].path)
-          if (extractedEndpoints[0].methods.length > 0) {
-            setSelectedMethod(extractedEndpoints[0].methods[0].method)
-          }
-        }
       } catch (error) {
         console.error("Error parsing API definition:", error)
         setError("Failed to parse API definition")
       }
     }
   }, [api])
-
-  const generateApiKey = async () => {
-    try {
-      setIsGeneratingKey(true)
-      setError(null)
-
-      const appService = new WSO2ApplicationService(baseUrl, authService)
-      const response = await appService.generateApiKey(applicationId, keyType as "PRODUCTION" | "SANDBOX", {
-        validityPeriod,
-      })
-
-      setApiKey(response.apikey)
-      setIsCopied(false)
-    } catch (err) {
-      console.error("Error generating API key:", err)
-      setError("Failed to generate API key. Please try again.")
-    } finally {
-      setIsGeneratingKey(false)
-    }
-  }
-
-  const copyApiKey = () => {
-    if (apiKey) {
-      navigator.clipboard.writeText(apiKey)
-      setIsCopied(true)
-      setTimeout(() => setIsCopied(false), 2000)
-    }
-  }
-
-  const handleParamChange = (name: string, value: string) => {
-    setRequestParams((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
-  }
-
-  const handleHeaderChange = (name: string, value: string) => {
-    setRequestHeaders((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
-  }
 
   const getMethodColor = (method: string) => {
     switch (method.toLowerCase()) {
@@ -141,698 +94,387 @@ export function ApiConsole({ baseUrl, api, authService, applicationId }: ApiCons
     }
   }
 
-  // Get the endpoint URL using our proxy to avoid CORS issues
-  const getEndpointUrl = () => {
-    // For debugging
-    console.log("API endpoints:", api.endpointURLs)
-
-    // First try to get from endpointURLs
-    if (api.endpointURLs && api.endpointURLs.length > 0) {
-      const endpoint = api.endpointURLs[0]
-      const urls = endpoint.URLs || {}
-
-      // Prefer HTTPS over HTTP
-      if (urls.https) {
-        return urls.https
-      }
-      if (urls.http) {
-        return urls.http
-      }
+  const generateApiKey = async () => {
+    try {
+      setIsGeneratingKey(true)
+      setError(null)
+      
+      const key = await authService.generateAPIKey(applicationId, keyType, validityPeriod)
+      setApiKey(key)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate API key")
+    } finally {
+      setIsGeneratingKey(false)
     }
-
-    // If no endpointURLs, try to construct from context and version
-    if (api.context) {
-      // Remove leading slash if present
-      const context = api.context.startsWith("/") ? api.context.substring(1) : api.context
-
-      // Construct base URL from the WSO2 API Manager URL
-      // Typically the gateway is on port 8243 or 8280
-      const gatewayUrl = baseUrl.replace(":9443", ":8243") // Replace management port with gateway port
-
-      // Construct the endpoint URL - don't include version twice
-      // The context might already include the version
-      if (context.includes(api.version)) {
-        return `${gatewayUrl}/${context}`
-      } else {
-        return `${gatewayUrl}/${context}/${api.version}`
-      }
-    }
-
-    // If all else fails, use the baseUrl as a fallback
-    return baseUrl
   }
 
-  // Generate curl command for the current request
-  const generateCurlCommand = (targetUrl: string) => {
-    let command = `curl -k -X '${selectedMethod}' \\\n  '${targetUrl}'`
+  const handleParamChange = (name: string, value: string) => {
+    setRequestParams((prev) => ({ ...prev, [name]: value }))
+  }
 
-    // Add headers
-    const allHeaders = { ...requestHeaders }
-    if (apiKey) {
-      allHeaders["apikey"] = apiKey
-    }
-
-    Object.entries(allHeaders).forEach(([key, value]) => {
-      command += ` \\\n  -H '${key}: ${value}'`
-    })
-
-    // Add body for POST/PUT/PATCH
-    if (["POST", "PUT", "PATCH"].includes(selectedMethod) && requestBody) {
-      command += ` \\\n  -d '${requestBody}'`
-    }
-
-    return command
+  const handleHeaderChange = (name: string, value: string) => {
+    setRequestHeaders((prev) => ({ ...prev, [name]: value }))
   }
 
   const sendRequest = async () => {
     try {
       setIsSendingRequest(true)
       setError(null)
-      setResponse(null)
-      setResponseStatus(null)
-      setResponseTime(null)
-      setDebugInfo(null)
-
-      if (!apiKey) {
-        setError("Please generate an API key first")
-        setIsSendingRequest(false)
-        return
-      }
-
-      // Build the URL with path parameters
-      let targetUrl = getEndpointUrl()
-      if (!targetUrl) {
-        setError("No endpoint URL available. Please check API configuration.")
-        setIsSendingRequest(false)
-        return
-      }
-
-      console.log("Using endpoint URL:", targetUrl)
-
-      // Add the path
-      let path = selectedEndpoint
-      console.log("Selected path:", path)
-
-      // Replace path parameters
+      
+      const startTime = Date.now()
+      
+      const url = new URL(baseUrl + selectedEndpoint)
+      // Add query parameters
       Object.entries(requestParams).forEach(([key, value]) => {
-        if (path.includes(`{${key}}`)) {
-          path = path.replace(`{${key}}`, encodeURIComponent(value))
-          delete requestParams[key] // Remove from query params
+        if (value) {
+          url.searchParams.append(key, value)
         }
       })
-
-      // Make sure URL ends with / if path doesn't start with /
-      if (!targetUrl.endsWith("/") && !path.startsWith("/")) {
-        targetUrl += "/"
-      }
-      // Remove / from the beginning of path if URL already ends with /
-      if (targetUrl.endsWith("/") && path.startsWith("/")) {
-        path = path.substring(1)
-      }
-
-      targetUrl += path
-
-      // Add query parameters
-      const queryParams = new URLSearchParams()
-      Object.entries(requestParams).forEach(([key, value]) => {
-        if (value) queryParams.append(key, value)
-      })
-
-      if (queryParams.toString()) {
-        targetUrl += `?${queryParams.toString()}`
-      }
-
-      console.log("Final target URL:", targetUrl)
-
-      // Generate curl command
-      const curlCmd = generateCurlCommand(targetUrl)
-      setCurlCommand(curlCmd)
 
       // Prepare headers
-      const headers: Record<string, string> = {
-        ...requestHeaders,
-      }
-
+      const headers = new Headers()
       if (apiKey) {
-        headers["apikey"] = apiKey
+        headers.append("apikey", apiKey)
+      }
+      Object.entries(requestHeaders).forEach(([key, value]) => {
+        if (key && value) {
+          headers.append(key, value)
+        }
+      })
+
+      // Prepare request options
+      const options: RequestInit = {
+        method: selectedMethod,
+        headers,
       }
 
-      // Add content-type header for POST/PUT/PATCH requests
-      if (["POST", "PUT", "PATCH"].includes(selectedMethod) && !headers["Content-Type"]) {
-        headers["Content-Type"] = "application/json"
+      // Add body for POST/PUT/PATCH requests
+      if (["POST", "PUT", "PATCH"].includes(selectedMethod) && requestBody) {
+        options.body = requestBody
       }
 
-      console.log("Request headers:", headers)
-      console.log("Request method:", selectedMethod)
-      console.log("Request body:", ["POST", "PUT", "PATCH"].includes(selectedMethod) ? requestBody : "No body")
+      // Generate curl command
+      let curl = `curl -X ${selectedMethod} '${url.toString()}'`
+      headers.forEach((value, key) => {
+        curl += `\n  -H '${key}: ${value}'`
+      })
+      if (options.body) {
+        curl += `\n  -d '${options.body}'`
+      }
+      setCurlCommand(curl)
 
-      // Set debug info
-      setDebugInfo(
-        `Request Details:
-- Target URL: ${targetUrl}
-- Method: ${selectedMethod}
-- Headers: ${JSON.stringify(headers, null, 2)}
-- Body: ${["POST", "PUT", "PATCH"].includes(selectedMethod) ? requestBody : "N/A"}
-      `,
-      )
+      const response = await fetch(url.toString(), options)
+      const responseTime = Date.now() - startTime
+      setResponseTime(responseTime)
+      setResponseStatus(response.status)
 
-      const startTime = Date.now()
-
-      // Use our proxy API route to avoid CORS issues
-      const proxyUrl = `/api/wso2-proxy?url=${encodeURIComponent(targetUrl)}`
-      console.log("Using proxy URL:", proxyUrl)
-
-      try {
-        const response = await fetch(proxyUrl, {
-          method: selectedMethod,
-          headers,
-          body: ["POST", "PUT", "PATCH"].includes(selectedMethod) ? requestBody : undefined,
-        })
-
-        const endTime = Date.now()
-        setResponseTime(endTime - startTime)
-        setResponseStatus(response.status)
-
-        // Parse response based on content type
-        const contentType = response.headers.get("content-type")
-
-        if (response.status >= 400) {
-          try {
-            // Try to parse error as JSON first
-            const errorData = await response.json()
-            setResponse(errorData)
-          } catch (jsonError) {
-            // If not JSON, get as text
-            const errorText = await response.text()
-            setResponse(errorText || "Error with no response body")
-          }
-        } else if (contentType && contentType.includes("application/json")) {
-          const jsonResponse = await response.json()
-          setResponse(jsonResponse)
-        } else {
-          const textResponse = await response.text()
-          setResponse(textResponse || "(Empty response)")
-        }
-      } catch (fetchErr) {
-        console.error("Fetch error:", fetchErr)
-
-        // Provide more helpful error message for certificate issues
-        if (fetchErr.message && fetchErr.message.includes("certificate")) {
-          setError(
-            "Certificate error: The API Gateway is using a self-signed certificate. " +
-            "This is expected in development environments."
-          )
-        } else {
-          setError(`Network error: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`)
-        }
+      const contentType = response.headers.get("content-type")
+      if (contentType?.includes("application/json")) {
+        const jsonResponse = await response.json()
+        setResponse(jsonResponse)
+      } else {
+        const textResponse = await response.text()
+        setResponse(textResponse)
       }
     } catch (err) {
-      console.error("Error sending request:", err)
-      setError(`Failed to send request: ${err instanceof Error ? err.message : String(err)}`)
+      setError(err instanceof Error ? err.message : "Failed to send request")
     } finally {
       setIsSendingRequest(false)
     }
   }
 
   return (
-    <div className="space-y-6">
-      {/* API Key Generation */}
-      <Card
-        className="border-none shadow-sm overflow-hidden"
+    <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-12rem)]">
+      {/* Left Sidebar - Endpoints List */}
+      <div className="w-full lg:w-1/4 flex flex-col border rounded-lg overflow-hidden"
         style={{
           backgroundColor: theme?.cardBackground || "#ffffff",
           borderColor: theme?.cardBorderColor || "#e5e7eb",
-          borderRadius: theme?.cardBorderRadius || "0.5rem",
-          boxShadow: theme?.cardShadow || "0 2px 4px rgba(0,0,0,0.1)"
-        }}
-      >
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium flex items-center gap-2" style={{ color: theme?.textColor || "#333333" }}>
-              <Key className="h-5 w-5 text-muted-foreground" />
-              API Key
-            </h3>
+        }}>
+        <div className="p-4 border-b bg-muted/30">
+          <h3 className="text-lg font-medium" style={{ color: theme?.textColor || "#333333" }}>Endpoints</h3>
+        </div>
+        <ScrollArea className="flex-1">
+          <div className="p-2">
+            {endpoints.map((endpoint, index) => (
+              <div key={index} className="mb-2">
+                <div className="text-sm font-medium mb-1 text-muted-foreground">{endpoint.path}</div>
+                <div className="flex flex-wrap gap-1">
+                  {endpoint.methods.map((method: any, methodIndex: number) => (
+                    <Badge
+                      key={methodIndex}
+                      className={`cursor-pointer border transition-all duration-200 hover:opacity-80 ${
+                        selectedEndpoint === endpoint.path && selectedMethod === method.method
+                          ? getMethodColor(method.method)
+                          : "bg-muted/30 text-muted-foreground border-muted"
+                      }`}
+                      onClick={() => {
+                        setSelectedEndpoint(endpoint.path)
+                        setSelectedMethod(method.method)
+                        setSelectedEndpointDetails(method)
+                        setRequestParams({})
+                        setRequestBody("")
+                        setResponse(null)
+                        setResponseStatus(null)
+                      }}
+                    >
+                      {method.method}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
+        </ScrollArea>
+      </div>
 
-          {error && error.includes("certificate") && (
-            <Alert className="mb-4 bg-amber-50 border-amber-200 text-amber-800">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Certificate Issue Detected</AlertTitle>
-              <AlertDescription className="space-y-2">
-                <p>
-                  The API Gateway is using a self-signed certificate, which is common in development environments. You
-                  can use the generated cURL command with the <code className="bg-amber-100 px-1 py-0.5 rounded">-k</code>{" "}
-                  flag in your terminal.
-                </p>
-              </AlertDescription>
-            </Alert>
-          )}
+      {/* Right Content Area */}
+      <div className="flex-1 flex flex-col">
+        {selectedEndpoint && selectedMethod ? (
+          <Card className="flex-1 border-none shadow-sm overflow-hidden">
+            <CardContent className="p-6 h-full flex flex-col">
+              {/* API Key Section */}
+              {!apiKey && (
+                <div className="mb-6 p-4 bg-muted/30 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-medium mb-1">Authentication Required</h4>
+                      <p className="text-sm text-muted-foreground">Generate an API key to start testing endpoints</p>
+                    </div>
+                    <Button
+                      onClick={generateApiKey}
+                      disabled={isGeneratingKey}
+                      style={{
+                        backgroundColor: theme?.buttonPrimaryColor || "#0070f3",
+                        color: theme?.buttonTextColor || "#ffffff",
+                      }}
+                    >
+                      {isGeneratingKey ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Key className="mr-2 h-4 w-4" />
+                          Generate API Key
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div className="space-y-2">
-              <Label htmlFor="keyType" className="text-sm" style={{ color: theme?.textColor || "#333333" }}>
-                Key Type
-              </Label>
-              <Select value={keyType} onValueChange={setKeyType}>
-                <SelectTrigger
-                  id="keyType"
-                  style={{
-                    backgroundColor: theme?.inputBackground || "#ffffff",
-                    borderColor: theme?.inputBorderColor || "#d1d5db",
-                    color: theme?.inputTextColor || "#333333",
-                    borderRadius: theme?.inputBorderRadius || "0.375rem",
-                  }}
-                >
-                  <SelectValue placeholder="Select key type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PRODUCTION">Production</SelectItem>
-                  <SelectItem value="SANDBOX">Sandbox</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="validityPeriod" className="text-sm" style={{ color: theme?.textColor || "#333333" }}>
-                Validity Period (seconds)
-              </Label>
-              <Input
-                id="validityPeriod"
-                type="number"
-                value={validityPeriod}
-                onChange={(e) => setValidityPeriod(Number.parseInt(e.target.value))}
-                min={1}
-                style={{
-                  backgroundColor: theme?.inputBackground || "#ffffff",
-                  borderColor: theme?.inputBorderColor || "#d1d5db",
-                  color: theme?.inputTextColor || "#333333",
-                  borderRadius: theme?.inputBorderRadius || "0.375rem",
-                }}
-              />
-            </div>
-          </div>
+              {/* Error Messages */}
+              {error && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-          <div className="flex flex-col space-y-2">
-            {apiKey ? (
-              <div className="flex items-center space-x-2">
-                <Input
-                  value={apiKey}
-                  readOnly
-                  className="font-mono"
-                  style={{
-                    backgroundColor: theme?.inputBackground || "#ffffff",
-                    borderColor: theme?.inputBorderColor || "#d1d5db",
-                    color: theme?.inputTextColor || "#333333",
-                    borderRadius: theme?.inputBorderRadius || "0.375rem",
-                  }}
-                />
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
+              {/* Main Content */}
+              <Tabs defaultValue="request" className="flex-1 flex flex-col">
+                <div className="border-b mb-6">
+                  <div className="flex items-baseline gap-4 mb-4">
+                    <h3 className="text-xl font-medium" style={{ color: theme?.textColor || "#333333" }}>
+                      {selectedEndpoint}
+                    </h3>
+                    <Badge className={getMethodColor(selectedMethod)}>{selectedMethod}</Badge>
+                  </div>
+                  {selectedEndpointDetails?.description && (
+                    <p className="text-sm text-muted-foreground mb-4">{selectedEndpointDetails.description}</p>
+                  )}
+                  <TabsList>
+                    <TabsTrigger value="request">Request</TabsTrigger>
+                    <TabsTrigger value="response">Response</TabsTrigger>
+                    <TabsTrigger value="curl">cURL</TabsTrigger>
+                  </TabsList>
+                </div>
+
+                <TabsContent value="request" className="flex-1 space-y-6">
+                  {/* Parameters Section */}
+                  {selectedEndpointDetails?.parameters?.length > 0 && (
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-medium" style={{ color: theme?.textColor || "#333333" }}>Parameters</h4>
+                      <div className="grid gap-4">
+                        {selectedEndpointDetails.parameters.map((param: any, index: number) => (
+                          <div key={index} className="grid grid-cols-4 gap-4 items-start">
+                            <div className="space-y-1">
+                              <Label htmlFor={`param-${param.name}`} className="flex items-center gap-1">
+                                <span className="font-mono text-sm">{param.name}</span>
+                                {param.required && <span className="text-red-500">*</span>}
+                              </Label>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-xs capitalize">
+                                  {param.in}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  {param.type || (param.schema && param.schema.type) || "string"}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="col-span-3">
+                              <Input
+                                id={`param-${param.name}`}
+                                value={requestParams[param.name] || ""}
+                                onChange={(e) => handleParamChange(param.name, e.target.value)}
+                                placeholder={param.description || `Enter ${param.name}`}
+                                style={{
+                                  backgroundColor: theme?.inputBackground || "#ffffff",
+                                  borderColor: theme?.inputBorderColor || "#d1d5db",
+                                  color: theme?.inputTextColor || "#333333",
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Request Body Section */}
+                  {["POST", "PUT", "PATCH"].includes(selectedMethod) && (
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-medium" style={{ color: theme?.textColor || "#333333" }}>Request Body</h4>
+                      <Textarea
+                        value={requestBody}
+                        onChange={(e) => setRequestBody(e.target.value)}
+                        placeholder="Enter JSON request body"
+                        className="font-mono min-h-[200px]"
+                        style={{
+                          backgroundColor: theme?.inputBackground || "#ffffff",
+                          borderColor: theme?.inputBorderColor || "#d1d5db",
+                          color: theme?.inputTextColor || "#333333",
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Headers Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-medium" style={{ color: theme?.textColor || "#333333" }}>Headers</h4>
                       <Button
                         variant="outline"
-                        size="icon"
-                        onClick={copyApiKey}
-                        className="shrink-0"
+                        size="sm"
+                        onClick={() => {
+                          const newName = `header-${Object.keys(requestHeaders).length + 1}`
+                          setRequestHeaders((prev) => ({ ...prev, [newName]: "" }))
+                        }}
                         style={{
                           borderColor: theme?.buttonSecondaryColor || "#6c757d",
                           color: theme?.buttonSecondaryColor || "#6c757d",
                         }}
                       >
-                        {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Header
                       </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{isCopied ? "Copied!" : "Copy API Key"}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            ) : (
-              <Button
-                onClick={generateApiKey}
-                disabled={isGeneratingKey}
-                className="w-full md:w-auto"
-                style={{
-                  backgroundColor: theme?.buttonPrimaryColor || "#0070f3",
-                  color: theme?.buttonTextColor || "#ffffff",
-                  borderRadius: theme?.buttonBorderRadius || "0.375rem",
-                }}
-              >
-                {isGeneratingKey ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Key className="mr-2 h-4 w-4" />
-                    Generate API Key
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* API Testing Console */}
-      <Card
-        className="border-none shadow-sm overflow-hidden"
-        style={{
-          backgroundColor: theme?.cardBackground || "#ffffff",
-          borderColor: theme?.cardBorderColor || "#e5e7eb",
-          borderRadius: theme?.cardBorderRadius || "0.5rem",
-          boxShadow: theme?.cardShadow || "0 2px 4px rgba(0,0,0,0.1)"
-        }}
-      >
-        <CardContent className="p-6">
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="w-full justify-start mb-6 bg-muted/30 p-1 rounded-lg">
-              <TabsTrigger value="console" className="flex items-center gap-2 data-[state=active]:bg-background">
-                <Play className="h-4 w-4" />
-                Console
-              </TabsTrigger>
-              <TabsTrigger value="curl" className="flex items-center gap-2 data-[state=active]:bg-background">
-                <Code className="h-4 w-4" />
-                cURL Command
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="console">
-              <div className="space-y-6">
-                {/* Endpoint Selection */}
-                <div className="space-y-2">
-                  <Label htmlFor="endpoint" className="text-sm" style={{ color: theme?.textColor || "#333333" }}>
-                    Endpoint
-                  </Label>
-                  <Select value={selectedEndpoint} onValueChange={(value) => {
-                    setSelectedEndpoint(value)
-
-                    // Reset request params
-                    setRequestParams({})
-
-                    // Auto-select first method when endpoint changes
-                    const endpoint = endpoints.find(e => e.path === value)
-                    if (endpoint && endpoint.methods.length > 0) {
-                      setSelectedMethod(endpoint.methods[0].method)
-                    }
-                  }}>
-                    <SelectTrigger
-                      id="endpoint"
-                      style={{
-                        backgroundColor: theme?.inputBackground || "#ffffff",
-                        borderColor: theme?.inputBorderColor || "#d1d5db",
-                        color: theme?.inputTextColor || "#333333",
-                        borderRadius: theme?.inputBorderRadius || "0.375rem",
-                      }}
-                    >
-                      <SelectValue placeholder="Select an endpoint" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {endpoints.map((endpoint, index) => (
-                        <SelectItem key={index} value={endpoint.path}>
-                          <span className="font-mono">{endpoint.path}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Method Selection */}
-                <div className="space-y-2">
-                  <Label htmlFor="method" className="text-sm" style={{ color: theme?.textColor || "#333333" }}>
-                    Method
-                  </Label>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedEndpoint &&
-                      endpoints
-                        .find((e) => e.path === selectedEndpoint)
-                        ?.methods.map((method: any, index: number) => (
-                          <Badge
-                            key={index}
-                            className={`cursor-pointer border transition-all duration-200 hover:opacity-80 ${selectedMethod === method.method
-                                ? getMethodColor(method.method)
-                                : "bg-muted/30 text-muted-foreground border-muted"
-                              }`}
-                            onClick={() => setSelectedMethod(method.method)}
-                            style={{
-                              padding: "0.5rem 1rem",
-                              fontSize: "0.875rem",
-                              fontWeight: selectedMethod === method.method ? "600" : "400"
-                            }}
-                          >
-                            {method.method}
-                          </Badge>
-                        ))}
-                  </div>
-                </div>
-
-                {/* Parameters */}
-                <Accordion type="single" collapsible className="w-full border rounded-lg overflow-hidden">
-                  <AccordionItem value="parameters" className="border-none">
-                    <AccordionTrigger
-                      className="px-4 py-3 hover:bg-muted/30 font-medium"
-                      style={{ color: theme?.textColor || "#333333" }}
-                    >
-                      Parameters
-                    </AccordionTrigger>
-                    <AccordionContent className="px-4 pb-4">
-                      <div className="space-y-4">
-                        {selectedEndpoint &&
-                          selectedMethod &&
-                          endpoints
-                            .find((e) => e.path === selectedEndpoint)
-                            ?.methods.find((m: any) => m.method === selectedMethod)
-                            ?.details.parameters?.map((param: any, index: number) => (
-                              <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                                <div>
-                                  <Label htmlFor={`param-${param.name}`} className="flex items-center gap-1" style={{ color: theme?.textColor || "#333333" }}>
-                                    <span className="font-mono text-sm">{param.name}</span>
-                                    {param.required && <span className="text-red-500">*</span>}
-                                  </Label>
-                                  <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                                    <Badge variant="outline" className="text-xs capitalize">
-                                      {param.in}
-                                    </Badge>
-                                    <span>•</span>
-                                    <span>{param.type || (param.schema && param.schema.type) || "string"}</span>
-                                  </div>
-                                </div>
-                                <div className="md:col-span-2">
-                                  <Input
-                                    id={`param-${param.name}`}
-                                    value={requestParams[param.name] || ""}
-                                    onChange={(e) => handleParamChange(param.name, e.target.value)}
-                                    placeholder={param.description || `Enter ${param.name}`}
-                                    style={{
-                                      backgroundColor: theme?.inputBackground || "#ffffff",
-                                      borderColor: theme?.inputBorderColor || "#d1d5db",
-                                      color: theme?.inputTextColor || "#333333",
-                                      borderRadius: theme?.inputBorderRadius || "0.375rem",
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                            ))}
-                        {(!selectedEndpoint ||
-                          !selectedMethod ||
-                          !endpoints
-                            .find((e) => e.path === selectedEndpoint)
-                            ?.methods.find((m: any) => m.method === selectedMethod)?.details.parameters ||
-                          endpoints
-                            .find((e) => e.path === selectedEndpoint)
-                            ?.methods.find((m: any) => m.method === selectedMethod)?.details.parameters.length ===
-                          0) && (
-                            <div className="text-center py-4 text-muted-foreground bg-muted/30 rounded-lg">
-                              No parameters required for this endpoint
-                            </div>
-                          )}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-
-                {/* Request Headers */}
-                <Accordion type="single" collapsible className="w-full border rounded-lg overflow-hidden">
-                  <AccordionItem value="headers" className="border-none">
-                    <AccordionTrigger
-                      className="px-4 py-3 hover:bg-muted/30 font-medium"
-                      style={{ color: theme?.textColor || "#333333" }}
-                    >
-                      Headers
-                    </AccordionTrigger>
-                    <AccordionContent className="px-4 pb-4">
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                    </div>
+                    <div className="grid gap-2">
+                      {apiKey && (
+                        <div className="grid grid-cols-4 gap-4 items-center">
                           <div>
-                            <Label htmlFor="header-apikey" className="text-sm" style={{ color: theme?.textColor || "#333333" }}>
-                              apikey
-                            </Label>
-                            <div className="text-xs text-muted-foreground mt-1">Required for authentication</div>
+                            <Label className="text-sm">apikey</Label>
                           </div>
-                          <div className="md:col-span-2">
-                            <Input
-                              id="header-apikey"
-                              value={apiKey || ""}
-                              disabled
-                              placeholder="Generate an API key first"
-                              className="font-mono bg-muted/30"
-                            />
+                          <div className="col-span-3">
+                            <Input value={apiKey} disabled className="font-mono bg-muted/30" />
                           </div>
                         </div>
-
-                        {/* Custom headers */}
-                        {Object.entries(requestHeaders).map(([name, value], index) => (
-                          <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                            <div>
-                              <Input
-                                value={name}
-                                onChange={(e) => {
-                                  const newHeaders = { ...requestHeaders }
-                                  delete newHeaders[name]
-                                  newHeaders[e.target.value] = value
-                                  setRequestHeaders(newHeaders)
-                                }}
-                                placeholder="Header name"
-                                className="font-mono text-sm"
-                                style={{
-                                  backgroundColor: theme?.inputBackground || "#ffffff",
-                                  borderColor: theme?.inputBorderColor || "#d1d5db",
-                                  color: theme?.inputTextColor || "#333333",
-                                  borderRadius: theme?.inputBorderRadius || "0.375rem",
-                                }}
-                              />
-                            </div>
-                            <div className="md:col-span-2 flex gap-2">
-                              <Input
-                                value={value}
-                                onChange={(e) => handleHeaderChange(name, e.target.value)}
-                                placeholder="Header value"
-                                style={{
-                                  backgroundColor: theme?.inputBackground || "#ffffff",
-                                  borderColor: theme?.inputBorderColor || "#d1d5db",
-                                  color: theme?.inputTextColor || "#333333",
-                                  borderRadius: theme?.inputBorderRadius || "0.375rem",
-                                }}
-                              />
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => {
-                                  const newHeaders = { ...requestHeaders }
-                                  delete newHeaders[name]
-                                  setRequestHeaders(newHeaders)
-                                }}
-                                className="shrink-0"
-                                style={{
-                                  borderColor: theme?.errorColor || "#ef4444",
-                                  color: theme?.errorColor || "#ef4444",
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
+                      )}
+                      {Object.entries(requestHeaders).map(([name, value], index) => (
+                        <div key={index} className="grid grid-cols-4 gap-4 items-center">
+                          <Input
+                            value={name}
+                            onChange={(e) => {
+                              const newHeaders = { ...requestHeaders }
+                              delete newHeaders[name]
+                              newHeaders[e.target.value] = value
+                              setRequestHeaders(newHeaders)
+                            }}
+                            placeholder="Header name"
+                            className="font-mono text-sm"
+                            style={{
+                              backgroundColor: theme?.inputBackground || "#ffffff",
+                              borderColor: theme?.inputBorderColor || "#d1d5db",
+                              color: theme?.inputTextColor || "#333333",
+                            }}
+                          />
+                          <div className="col-span-3 flex gap-2">
+                            <Input
+                              value={value}
+                              onChange={(e) => handleHeaderChange(name, e.target.value)}
+                              placeholder="Header value"
+                              style={{
+                                backgroundColor: theme?.inputBackground || "#ffffff",
+                                borderColor: theme?.inputBorderColor || "#d1d5db",
+                                color: theme?.inputTextColor || "#333333",
+                              }}
+                            />
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => {
+                                const newHeaders = { ...requestHeaders }
+                                delete newHeaders[name]
+                                setRequestHeaders(newHeaders)
+                              }}
+                              className="shrink-0"
+                              style={{
+                                borderColor: theme?.errorColor || "#ef4444",
+                                color: theme?.errorColor || "#ef4444",
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
-                        ))}
-
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            const newName = `header-${Object.keys(requestHeaders).length + 1}`
-                            setRequestHeaders((prev) => ({ ...prev, [newName]: "" }))
-                          }}
-                          className="flex items-center gap-2"
-                          style={{
-                            borderColor: theme?.buttonSecondaryColor || "#6c757d",
-                            color: theme?.buttonSecondaryColor || "#6c757d",
-                            borderRadius: theme?.buttonBorderRadius || "0.375rem",
-                            borderRadius: theme?.buttonBorderRadius || "0.375rem",
-                          }}
-                        >
-                          <Plus className="h-4 w-4" />
-                          Add Header
-                        </Button>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-
-                {/* Request Body */}
-                {["POST", "PUT", "PATCH"].includes(selectedMethod) && (
-                  <div className="space-y-2">
-                    <Label htmlFor="request-body" className="text-sm" style={{ color: theme?.textColor || "#333333" }}>
-                      Request Body
-                    </Label>
-                    <Textarea
-                      id="request-body"
-                      value={requestBody}
-                      onChange={(e) => setRequestBody(e.target.value)}
-                      placeholder="Enter JSON request body"
-                      className="font-mono h-40"
-                      style={{
-                        backgroundColor: theme?.inputBackground || "#ffffff",
-                        borderColor: theme?.inputBorderColor || "#d1d5db",
-                        color: theme?.inputTextColor || "#333333",
-                        borderRadius: theme?.inputBorderRadius || "0.375rem",
-                      }}
-                    />
-                  </div>
-                )}
-
-                {/* Send Request Button */}
-                <Button
-                  onClick={sendRequest}
-                  disabled={isSendingRequest || !apiKey || !selectedEndpoint || !selectedMethod}
-                  className="w-full"
-                  style={{
-                    backgroundColor: theme?.buttonPrimaryColor || "#0070f3",
-                    color: theme?.buttonTextColor || "#ffffff",
-                    borderRadius: theme?.buttonBorderRadius || "0.375rem",
-                  }}
-                >
-                  {isSendingRequest ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Sending Request...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="mr-2 h-4 w-4" />
-                      Send Request
-                    </>
-                  )}
-                </Button>
-
-                {/* Response Section */}
-                {(response || responseStatus) && (
-                  <div className="mt-8 space-y-6">
-                    <div className="border-b pb-2">
-                      <h3 className="text-lg font-medium" style={{ color: theme?.textColor || "#333333" }}>
-                        Response
-                      </h3>
+                        </div>
+                      ))}
                     </div>
+                  </div>
 
+                  {/* Send Request Button */}
+                  <div className="pt-4">
+                    <Button
+                      onClick={sendRequest}
+                      disabled={isSendingRequest || !apiKey}
+                      className="w-full"
+                      style={{
+                        backgroundColor: theme?.buttonPrimaryColor || "#0070f3",
+                        color: theme?.buttonTextColor || "#ffffff",
+                      }}
+                    >
+                      {isSendingRequest ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Sending Request...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="mr-2 h-4 w-4" />
+                          Send Request
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="response" className="flex-1">
+                  {(response || responseStatus) ? (
                     <div className="space-y-4">
-                      {/* Response Status and Time */}
-                      <div className="flex flex-wrap gap-4">
+                      <div className="flex items-center gap-4">
                         {responseStatus && (
                           <div className="space-y-1">
                             <div className="text-xs text-muted-foreground">Status</div>
                             <Badge
-                              className={`px-3 py-1 ${responseStatus >= 200 && responseStatus < 300
+                              className={
+                                responseStatus >= 200 && responseStatus < 300
                                   ? "bg-green-100 text-green-800 border-green-200"
                                   : responseStatus >= 400
-                                    ? "bg-red-100 text-red-800 border-red-200"
-                                    : "bg-amber-100 text-amber-800 border-amber-200"
-                                }`}
+                                  ? "bg-red-100 text-red-800 border-red-200"
+                                  : "bg-amber-100 text-amber-800 border-amber-200"
+                              }
                             >
                               {responseStatus}
                             </Badge>
@@ -846,135 +488,84 @@ export function ApiConsole({ baseUrl, api, authService, applicationId }: ApiCons
                         )}
                       </div>
 
-                      {/* Response Body */}
-                      <div className="space-y-2">
-                        <Label htmlFor="response-body" className="text-sm" style={{ color: theme?.textColor || "#333333" }}>
-                          Response Body
-                        </Label>
-                        <div
-                          className="rounded-md border bg-muted p-4 relative overflow-hidden"
+                      <div className="relative">
+                        <ScrollArea className="h-[calc(100vh-24rem)] w-full">
+                          <pre
+                            className="p-4 rounded-lg font-mono text-sm whitespace-pre-wrap"
+                            style={{
+                              backgroundColor: theme?.codeBackground || "#f1f5f9",
+                              color: theme?.textColor || "#333333",
+                            }}
+                          >
+                            {typeof response === "object" ? JSON.stringify(response, null, 2) : response}
+                          </pre>
+                        </ScrollArea>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="absolute top-2 right-2"
+                          onClick={() => {
+                            const text = typeof response === "object" ? JSON.stringify(response, null, 2) : response
+                            navigator.clipboard.writeText(text)
+                          }}
                           style={{
-                            backgroundColor: theme?.codeBackground || "#f1f5f9",
-                            borderColor: theme?.codeBorderColor || "#e2e8f0",
+                            backgroundColor: theme?.cardBackground || "#ffffff",
+                            borderColor: theme?.buttonSecondaryColor || "#6c757d",
+                            color: theme?.buttonSecondaryColor || "#6c757d",
                           }}
                         >
-                          <ScrollArea className="h-60 w-full relative font-mono text-sm">
-                            <pre className="whitespace-pre-wrap break-words">
-                              {typeof response === 'object'
-                                ? JSON.stringify(response, null, 2)
-                                : response}
-                            </pre>
-                          </ScrollArea>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="absolute top-2 right-2 bg-background"
-                                  onClick={() => {
-                                    const text = typeof response === 'object'
-                                      ? JSON.stringify(response, null, 2)
-                                      : response;
-                                    navigator.clipboard.writeText(text);
-                                  }}
-                                  style={{
-                                    borderColor: theme?.buttonSecondaryColor || "#6c757d",
-                                    color: theme?.buttonSecondaryColor || "#6c757d",
-                                  }}
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Copy Response</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
+                          <Copy className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="flex items-center justify-center h-[calc(100vh-24rem)] text-muted-foreground">
+                      No response yet. Send a request to see the response here.
+                    </div>
+                  )}
+                </TabsContent>
 
-                {/* Debug Info (only shown if there's debug info) */}
-                {debugInfo && (
-                  <Accordion type="single" collapsible className="w-full border rounded-lg overflow-hidden mt-6">
-                    <AccordionItem value="debug" className="border-none">
-                      <AccordionTrigger className="px-4 py-3 hover:bg-muted/30 font-medium">
-                        Debug Information
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-4">
-                        <div
-                          className="rounded-md border bg-muted p-4 font-mono text-sm whitespace-pre-wrap"
+                <TabsContent value="curl" className="flex-1">
+                  <div className="space-y-4">
+                    <div className="relative">
+                      <ScrollArea className="h-[calc(100vh-24rem)] w-full">
+                        <pre
+                          className="p-4 rounded-lg font-mono text-sm whitespace-pre-wrap"
                           style={{
                             backgroundColor: theme?.codeBackground || "#f1f5f9",
-                            borderColor: theme?.codeBorderColor || "#e2e8f0",
+                            color: theme?.textColor || "#333333",
                           }}
                         >
-                          {debugInfo}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="curl">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="curl-command" className="text-sm" style={{ color: theme?.textColor || "#333333" }}>
-                    cURL Command
-                  </Label>
-                  <div
-                    className="relative overflow-hidden rounded-md border bg-muted p-4"
-                    style={{
-                      backgroundColor: theme?.codeBackground || "#f1f5f9",
-                      borderColor: theme?.codeBorderColor || "#e2e8f0",
-                    }}
-                  >
-                    <ScrollArea className="h-60 w-full relative">
-                      <pre className="font-mono text-sm whitespace-pre-wrap break-words">
-                        {curlCommand || "Select an endpoint and click 'Send Request' to generate a cURL command."}
-                      </pre>
-                    </ScrollArea>
-                    {curlCommand && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="absolute top-2 right-2 bg-background"
-                              onClick={() => navigator.clipboard.writeText(curlCommand)}
-                              style={{
-                                borderColor: theme?.buttonSecondaryColor || "#6c757d",
-                                color: theme?.buttonSecondaryColor || "#6c757d",
-                              }}
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Copy cURL Command</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
+                          {curlCommand || "Send a request to generate the cURL command."}
+                        </pre>
+                      </ScrollArea>
+                      {curlCommand && (
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="absolute top-2 right-2"
+                          onClick={() => navigator.clipboard.writeText(curlCommand)}
+                          style={{
+                            backgroundColor: theme?.cardBackground || "#ffffff",
+                            borderColor: theme?.buttonSecondaryColor || "#6c757d",
+                            color: theme?.buttonSecondaryColor || "#6c757d",
+                          }}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-sm text-muted-foreground mt-2">
-                    <p>
-                      This cURL command can be used to test the API directly from your terminal.
-                      The <code className="bg-muted px-1 py-0.5 rounded">-k</code> flag is included to bypass certificate verification for development environments.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            Select an endpoint from the left to start testing
+          </div>
+        )}
+      </div>
     </div>
-  );
+  )
 }

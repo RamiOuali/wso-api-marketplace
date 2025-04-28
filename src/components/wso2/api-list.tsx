@@ -5,7 +5,6 @@ import { useState, useEffect, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { WSO2DevPortalService } from "@/lib/wso2/api-service"
 import { WSO2SubscriptionService } from "@/lib/wso2/subscription-service"
-import type { WSO2AuthService } from "@/lib/wso2/auth-service"
 import type { APIInfo } from "@/lib/wso2/types"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -28,15 +27,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { debounce } from "@/lib/utils"
+import { useAuth } from "@/providers/authContext"
 
 interface WSO2ApiListProps {
   baseUrl: string
-  authService?: WSO2AuthService | null
 }
 
-export function WSO2ApiList({ baseUrl, authService }: WSO2ApiListProps) {
+export function WSO2ApiList({ baseUrl }: WSO2ApiListProps) {
   const router = useRouter()
   const { theme } = useThemeContext()
+  const { wso2AuthService, isAuthenticated } = useAuth()
+
   const [apis, setApis] = useState<APIInfo[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
@@ -52,12 +53,12 @@ export function WSO2ApiList({ baseUrl, authService }: WSO2ApiListProps) {
 
   // Memoize the API and Subscription services
   const apiService = useMemo(() => {
-    return new WSO2DevPortalService(baseUrl, authService || undefined)
-  }, [baseUrl, authService])
+    return new WSO2DevPortalService(baseUrl, wso2AuthService || undefined)
+  }, [baseUrl, wso2AuthService])
 
   const subscriptionService = useMemo(() => {
-    return authService ? new WSO2SubscriptionService(baseUrl, authService) : null
-  }, [baseUrl, authService])
+    return wso2AuthService ? new WSO2SubscriptionService(baseUrl, wso2AuthService) : null
+  }, [baseUrl, wso2AuthService])
 
   // Debounced search function
   const debouncedSearch = useCallback(
@@ -77,7 +78,7 @@ export function WSO2ApiList({ baseUrl, authService }: WSO2ApiListProps) {
 
   // Fetch subscriptions
   const fetchSubscriptions = useCallback(async () => {
-    if (!subscriptionService || !authService) {
+    if (!subscriptionService || !isAuthenticated) {
       setSubscriptions([])
       return
     }
@@ -90,7 +91,7 @@ export function WSO2ApiList({ baseUrl, authService }: WSO2ApiListProps) {
       console.error("Error fetching subscriptions:", error)
       setSubscriptions([])
     }
-  }, [subscriptionService, authService])
+  }, [subscriptionService, isAuthenticated])
 
   // Fetch APIs function
   const fetchApis = useCallback(async () => {
@@ -271,7 +272,10 @@ export function WSO2ApiList({ baseUrl, authService }: WSO2ApiListProps) {
             <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem className={!filterStatus ? "主menuItemBg-muted/50" : ""} onClick={() => setFilterStatus(null)}>
+              <DropdownMenuItem
+                className={!filterStatus ? "主menuItemBg-muted/50" : ""}
+                onClick={() => setFilterStatus(null)}
+              >
                 All Statuses
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -439,7 +443,7 @@ export function WSO2ApiList({ baseUrl, authService }: WSO2ApiListProps) {
                       className="flex items-center gap-1"
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
-                      {isSubscribed ? "Consult API" :"Consult API"}
+                      {isSubscribed ? "Consult API" : "Consult API"}
                     </Button>
                   </CardFooter>
                 </Card>

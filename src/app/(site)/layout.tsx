@@ -1,24 +1,23 @@
 // app/(site)/layout.tsx
-import { ReactNode } from 'react';
-import { ThemeProvider } from '@/providers/ThemeProvider';
-import { getThemeData } from '@/components/ThemeData';
-import { Navbar } from '@/components/layout/navbar';
-import { Footer } from '@/components/layout/footer';
+import type { ReactNode } from "react"
+import { ThemeProvider } from "@/providers/ThemeProvider"
+import { getThemeData } from "@/components/ThemeData"
+import { Navbar } from "@/components/layout/navbar"
+import { Footer } from "@/components/layout/footer"
+import { AuthProvider } from "@/providers/authContext"
 
 export default async function SiteLayout({ children }: { children: ReactNode }) {
-  const theme = await getThemeData();
-  
+  const theme = await getThemeData()
+
   return (
     <>
       {theme ? (
         <ThemeProvider theme={theme}>
-          <Navbar />
-                  <main className="min-h-screen">
-            {children}
-          </main>
-
-
-          <Footer />
+          <AuthProvider>
+            <Navbar />
+            <main className="min-h-screen">{children}</main>
+            <Footer />
+          </AuthProvider>
         </ThemeProvider>
       ) : (
         <div className="min-h-screen flex items-center justify-center">
@@ -26,5 +25,5 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
         </div>
       )}
     </>
-  );
+  )
 }

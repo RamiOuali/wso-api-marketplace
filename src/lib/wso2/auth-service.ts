@@ -3,124 +3,77 @@
  * Handles authentication with WSO2 API Manager
  */
 export class WSO2AuthService {
-  private baseUrl: string
-  private clientId = ""
-  private clientSecret = ""
-  private accessToken: string | null = null
-  private refreshToken: string | null = null
-  private tokenExpiry = 0
+  baseUrl: string
+  clientId = ""
+  clientSecret = ""
+  accessToken = ""
+  refreshToken = ""
+  tokenExpiry = 0
+  username = ""
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl
-  }
 
-  /**
-   * Register a dynamic client with WSO2 API Manager
-   * @param username - Username for registration
-   * @param password - Password for registration
-   * @returns Promise with client credentials
-   */
-  async registerClient(username: string, password: string): Promise<{ clientId: string; clientSecret: string }> {
-    try {
-      const payload = {
-        callbackUrl: "http://localhost",
-        clientName: `api_marketplace_${Date.now()}`,
-        owner: username,
-        grantType: "password refresh_token",
-        saasApp: true,
-      }
-
-      try {
-        const response = await fetch(`${this.baseUrl}/client-registration/v0.17/register`, {
-          method: "POST",
-          headers: {
-            Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        })
-
-        if (!response.ok) {
-          const errorText = await response.text()
-          throw new Error(`Failed to register client: ${response.status} ${response.statusText} - ${errorText}`)
-        }
-
-        const data = await response.json()
-        this.clientId = data.clientId
-        this.clientSecret = data.clientSecret
-
-        return {
-          clientId: this.clientId,
-          clientSecret: this.clientSecret,
-        }
-      } catch (fetchError) {
-        if (fetchError instanceof TypeError && fetchError.message.includes("NetworkError")) {
-          throw new Error(
-            "Network error: Unable to connect to the WSO2 API Manager. This may be due to CORS restrictions or the server being unavailable.",
-          )
-        }
-        throw fetchError
-      }
-    } catch (error) {
-      console.error("Error registering client:", error)
-      throw error
+    // Try to load credentials from localStorage if available
+    if (typeof window !== "undefined") {
+      this.clientId = localStorage.getItem("wso2_clientId") || ""
+      this.clientSecret = localStorage.getItem("wso2_clientSecret") || ""
+      this.accessToken = localStorage.getItem("wso2_accessToken") || ""
+      this.refreshToken = localStorage.getItem("wso2_refreshToken") || ""
+      this.tokenExpiry = Number.parseInt(localStorage.getItem("wso2_tokenExpiry") || "0", 10)
+      this.username = localStorage.getItem("wso2_username") || ""
     }
   }
 
   /**
-   * Get access token using password grant
-   * @param username - Username for authentication
-   * @param password - Password for authentication
-   * @returns Promise with access token
+   * Check if we have valid credentials
    */
-  async getAccessTokenWithPasswordGrant(username: string, password: string): Promise<string> {
-    try {
-      if (!this.clientId || !this.clientSecret) {
-        throw new Error("Client registration required before getting access token")
-      }
+  hasValidCredentials(): boolean {
+    return !!(this.clientId && this.clientSecret && this.accessToken)
+  }
 
-      const params = new URLSearchParams()
-      params.append("grant_type", "password")
-      params.append("username", username)
-      params.append("password", password)
-      params.append("scope", "apim:subscribe apim:api_view apim:api_key")
+  /**
+   * Check if the token is expired
+   */
+  isTokenExpired(): boolean {
+    return Date.now() > this.tokenExpiry - 60000 // 1 minute buffer
+  }
 
-      const response = await fetch(`${this.baseUrl}/oauth2/token`, {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${Buffer.from(`${this.clientId}:${this.clientSecret}`).toString("base64")}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: params.toString(),
-      })
+  /**
+   * Check if the user is authenticated
+   */
+  isAuthenticated(): boolean {
+    return this.hasValidCredentials() && !this.isTokenExpired()
+  }
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Failed to get access token: ${response.status} ${response.statusText} - ${errorText}`)
-      }
-
-      const data = await response.json()
-      this.accessToken = data.access_token
-      this.refreshToken = data.refresh_token
-      this.tokenExpiry = Date.now() + data.expires_in * 1000
-
+  /**
+   * Get access token, refreshing if necessary
+   */
+  async getValidAccessToken(): Promise<string> {
+    // If we have a valid token, return it
+    if (this.accessToken && !this.isTokenExpired()) {
       return this.accessToken
-    } catch (error) {
-      console.error("Error getting access token:", error)
-      throw error
     }
+
+    // If we have a refresh token, try to refresh
+    if (this.refreshToken) {
+      try {
+        await this.refreshAccessToken()
+        return this.accessToken
+      } catch (error) {
+        console.error("Error refreshing token:", error)
+        throw error
+      }
+    }
+
+    throw new Error("No valid token or refresh token available")
   }
 
   /**
-   * Refresh the access token using refresh token
-   * @returns Promise with new access token
+   * Refresh the access token using the refresh token
    */
-  async refreshAccessToken(): Promise<string> {
+  async refreshAccessToken(): Promise<void> {
     try {
-      if (!this.clientId || !this.clientSecret || !this.refreshToken) {
-        throw new Error("Client registration and previous authentication required")
-      }
-
       const params = new URLSearchParams()
       params.append("grant_type", "refresh_token")
       params.append("refresh_token", this.refreshToken)
@@ -144,7 +97,12 @@ export class WSO2AuthService {
       this.refreshToken = data.refresh_token
       this.tokenExpiry = Date.now() + data.expires_in * 1000
 
-      return this.accessToken
+      // Save to localStorage
+      if (typeof window !== "undefined") {
+        localStorage.setItem("wso2_accessToken", this.accessToken)
+        localStorage.setItem("wso2_refreshToken", this.refreshToken)
+        localStorage.setItem("wso2_tokenExpiry", this.tokenExpiry.toString())
+      }
     } catch (error) {
       console.error("Error refreshing token:", error)
       throw error
@@ -152,75 +110,65 @@ export class WSO2AuthService {
   }
 
   /**
-   * Get a valid access token, refreshing if necessary
-   * @returns Promise with access token
+   * Set credentials from Identity Server auth service
    */
-  async getValidAccessToken(): Promise<string | null> {
-    if (!this.accessToken) {
-      return null
+  setCredentialsFromIdentityAuth(
+    clientId: string,
+    clientSecret: string,
+    accessToken: string,
+    refreshToken: string,
+    tokenExpiry: number,
+    username: string,
+  ): void {
+    this.clientId = clientId
+    this.clientSecret = clientSecret
+    this.accessToken = accessToken
+    this.refreshToken = refreshToken
+    this.tokenExpiry = tokenExpiry
+    this.username = username
+
+    // Save to localStorage
+    if (typeof window !== "undefined") {
+      localStorage.setItem("wso2_clientId", this.clientId)
+      localStorage.setItem("wso2_clientSecret", this.clientSecret)
+      localStorage.setItem("wso2_accessToken", this.accessToken)
+      localStorage.setItem("wso2_refreshToken", this.refreshToken)
+      localStorage.setItem("wso2_tokenExpiry", this.tokenExpiry.toString())
+      localStorage.setItem("wso2_username", this.username)
+      localStorage.setItem("wso2_baseUrl", this.baseUrl)
     }
 
-    // If token is expired or about to expire in the next minute, refresh it
-    if (Date.now() > this.tokenExpiry - 60000) {
-      try {
-        return await this.refreshAccessToken()
-      } catch (error) {
-        console.error("Error refreshing token:", error)
-        return null
-      }
+    // Dispatch event to notify components that auth status has changed
+    if (typeof document !== "undefined") {
+      document.dispatchEvent(new Event("wso2AuthStatusChanged"))
     }
-
-    return this.accessToken
   }
 
   /**
-   * Check if user is authenticated
-   * @returns Boolean indicating if user is authenticated
+   * Clear credentials
    */
-  isAuthenticated(): boolean {
-    return !!this.accessToken && Date.now() < this.tokenExpiry
-  }
-
-  /**
-   * Clear authentication data
-   */
-  logout(): void {
-    this.accessToken = null
-    this.refreshToken = null
+  clearCredentials(): void {
+    this.clientId = ""
+    this.clientSecret = ""
+    this.accessToken = ""
+    this.refreshToken = ""
     this.tokenExpiry = 0
-  }
+    this.username = ""
 
-  /**
-   * Check if the user is authenticated with WSO2
-   * @returns Boolean indicating if the user is authenticated
-   */
-  static checkAuthentication(): boolean {
-    try {
-      const accessToken = localStorage.getItem("wso2_accessToken")
-      const tokenExpiry = localStorage.getItem("wso2_tokenExpiry")
-
-      if (!accessToken || !tokenExpiry) {
-        return false
-      }
-
-      // Check if token is expired
-      const expiryTime = Number.parseInt(tokenExpiry, 10)
-      if (Date.now() > expiryTime) {
-        return false
-      }
-
-      return true
-    } catch (error) {
-      console.error("Error checking authentication:", error)
-      return false
+    // Clear from localStorage
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("wso2_clientId")
+      localStorage.removeItem("wso2_clientSecret")
+      localStorage.removeItem("wso2_accessToken")
+      localStorage.removeItem("wso2_refreshToken")
+      localStorage.removeItem("wso2_tokenExpiry")
+      localStorage.removeItem("wso2_username")
+      localStorage.removeItem("wso2_publicMode")
     }
-  }
 
-  /**
-   * Check if public mode is enabled
-   * @returns Boolean indicating if public mode is enabled
-   */
-  static isPublicMode(): boolean {
-    return localStorage.getItem("wso2_publicMode") === "true"
+    // Dispatch event to notify components that auth status has changed
+    if (typeof document !== "undefined") {
+      document.dispatchEvent(new Event("wso2AuthStatusChanged"))
+    }
   }
 }
