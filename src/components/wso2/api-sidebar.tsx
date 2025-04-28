@@ -120,7 +120,7 @@ export function ApiSidebar({
                     key={policy}
                     variant="outline"
                     style={{
-                      borderColor: theme?.borderColor || "#e5e7eb",
+                      borderColor: theme?.cardBorderColor || "#e5e7eb",
                       color: theme?.textColor || "#333333",
                     }}
                   >

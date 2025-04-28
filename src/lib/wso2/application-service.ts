@@ -1,5 +1,4 @@
 import type { WSO2AuthService } from "./auth-service"
-import { WSO2OAuthService } from "./oauth-service"
 
 /**
  * WSO2 Application Service
@@ -8,12 +7,10 @@ import { WSO2OAuthService } from "./oauth-service"
 export class WSO2ApplicationService {
   private baseUrl: string
   private authService: WSO2AuthService
-  private oauthService: WSO2OAuthService
 
   constructor(baseUrl: string, authService: WSO2AuthService) {
     this.baseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl
     this.authService = authService
-    this.oauthService = new WSO2OAuthService(baseUrl, authService)
   }
 
   /**
@@ -309,55 +306,141 @@ export class WSO2ApplicationService {
     }
   }
 
-  /**
-   * Get application credentials (both OAuth and API Key if available)
-   * @param applicationId - Application ID
-   * @returns Promise with application credentials
-   */
-  async getApplicationCredentials(applicationId: string): Promise<any> {
-    try {
-      const [oauthKeys, apiKeys] = await Promise.all([
-        this.oauthService.getOAuthKeys(applicationId).catch(() => null),
-        this.getApplicationKeys(applicationId, "PRODUCTION").catch(() => null)
-      ])
 
-      return {
-        oauth: oauthKeys,
-        apiKey: apiKeys
+ 
+
+  
+
+  async getApplication(applicationId: string): Promise<Application> {
+    try {
+      const token = await this.authService.getValidAccessToken()
+      if (!token) {
+        throw new Error("No valid access token available")
       }
+
+      const response = await fetch(
+        `${this.baseUrl}/api/am/devportal/v3/applications/${applicationId}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`Failed to get application: ${response.statusText}`)
+      }
+
+      return await response.json()
     } catch (error) {
-      console.error("Error getting application credentials:", error)
+      console.error("Error getting application:", error)
       throw error
     }
   }
 
-  /**
-   * Generate application credentials (both OAuth and API Key)
-   * @param applicationId - Application ID 
-   * @param generateApiKey - Whether to generate API Key
-   * @param generateOAuth - Whether to generate OAuth credentials
-   * @returns Promise with generated credentials
-   */
-  async generateCredentials(
-    applicationId: string,
-    generateApiKey: boolean = true,
-    generateOAuth: boolean = true
-  ): Promise<any> {
+
+
+  async updateApplication(applicationId: string, application: Partial<Application>): Promise<Application> {
     try {
-      const results: any = {}
-
-      if (generateOAuth) {
-        results.oauth = await this.oauthService.generateOAuthKeys(applicationId)
+      const token = await this.authService.getValidAccessToken()
+      if (!token) {
+        throw new Error("No valid access token available")
       }
 
-      if (generateApiKey) {
-        results.apiKey = await this.generateApiKey(applicationId, "PRODUCTION")
+      const response = await fetch(
+        `${this.baseUrl}/api/am/devportal/v3/applications/${applicationId}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(application),
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`Failed to update application: ${response.statusText}`)
       }
 
-      return results
+      return await response.json()
     } catch (error) {
-      console.error("Error generating credentials:", error)
+      console.error("Error updating application:", error)
+      throw error
+    }
+  }
+
+  async getApplicationSubscriptions(applicationId: string): Promise<any> {
+    try {
+      const token = await this.authService.getValidAccessToken()
+      if (!token) {
+        throw new Error("No valid access token available")
+      }
+
+      const response = await fetch(
+        `${this.baseUrl}/api/am/devportal/v3/subscriptions?applicationId=${applicationId}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`Failed to get subscriptions: ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error("Error getting subscriptions:", error)
+      throw error
+    }
+  }
+
+  async deleteSubscription(subscriptionId: string): Promise<boolean> {
+    try {
+      const token = await this.authService.getValidAccessToken()
+      if (!token) {
+        throw new Error("No valid access token available")
+      }
+
+      const response = await fetch(
+        `${this.baseUrl}/api/am/devportal/v3/subscriptions/${subscriptionId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete subscription: ${response.statusText}`)
+      }
+
+      return true
+    } catch (error) {
+      console.error("Error deleting subscription:", error)
       throw error
     }
   }
 }
+
+
+
+export interface Application {
+  applicationId: string
+  name: string
+  throttlingPolicy: string
+  description?: string
+  status: string
+  groups?: string[]
+  subscriptionCount?: number
+  attributes?: Record<string, string>
+}
+
+

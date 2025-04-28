@@ -21,12 +21,7 @@ export default function ApiDetailPage({ params }: { params: Promise<{ id: string
       const storedBaseUrl = localStorage.getItem("wso2_baseUrl") || "https://localhost:9443"
       setBaseUrl(storedBaseUrl)
 
-      // If not authenticated or no WSO2 auth service, redirect to WSO2 page
-      if (!authLoading && (!isAuthenticated || !wso2AuthService || !wso2AuthService.hasValidCredentials())) {
-        router.push("/wso2")
-        return
-      }
-
+      // Allow unauthenticated users to view the API detail (subscribe button will be disabled)
       setLoading(false)
     } catch (err) {
       console.error("Error initializing API detail page:", err)
@@ -51,5 +46,5 @@ export default function ApiDetailPage({ params }: { params: Promise<{ id: string
     )
   }
 
-  return <ApiDetail baseUrl={baseUrl} apiId={id} WSO2AuthService={wso2AuthService} />
+  return <ApiDetail baseUrl={baseUrl} apiId={id} />
 }

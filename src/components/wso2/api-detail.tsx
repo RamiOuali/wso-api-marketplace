@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   AlertCircle, ArrowLeft, BookOpen, Code,
   ExternalLink, FileText, Info, Layers,
+  Layout,
   Loader2, TagIcon,
 } from "lucide-react"
 import { WSO2DevPortalService } from "@/lib/wso2/api-service"
@@ -23,6 +24,19 @@ import Image from "next/image"
 import type { API } from "@/lib/wso2/types"
 import { WSO2SubscriptionService } from "@/lib/wso2/subscription-service"
 import { Skeleton } from "../ui/skeleton"
+import { ApplicationsTab } from "./applications-tab"
+import { Breadcrumb } from "@/components/ui/breadcrumb"
+
+interface EndpointURLs {
+  https?: string;
+  http?: string;
+  wss?: string;
+}
+
+interface Endpoint {
+  environmentDisplayName?: string;
+  URLs?: EndpointURLs;
+}
 
 interface ApiDetailProps {
   baseUrl: string
@@ -43,6 +57,7 @@ export function ApiDetail({ baseUrl, apiId }: ApiDetailProps) {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
   const [isSubscribed, setIsSubscribed] = useState<boolean>(false)
   const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null)
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string>()
 
   // Get the tab from URL or default to overview
   const initialTab = searchParams?.get("tab") || "overview"
@@ -54,7 +69,7 @@ export function ApiDetail({ baseUrl, apiId }: ApiDetailProps) {
         setLoading(true)
         setError(null)
 
-        const apiService = new WSO2DevPortalService(baseUrl, wso2AuthService)
+        const apiService = new WSO2DevPortalService(baseUrl, wso2AuthService || undefined)
 
         try {
           const apiData = await apiService.getApiById(apiId)
@@ -83,22 +98,29 @@ export function ApiDetail({ baseUrl, apiId }: ApiDetailProps) {
             try {
               const subscriptionService = new WSO2SubscriptionService(baseUrl, wso2AuthService)
               const subscriptions = await subscriptionService.getSubscriptions(undefined, apiId)
-              setIsSubscribed(subscriptions.count > 0)
-              if (subscriptions.count > 0) {
+              
+              if (subscriptions && subscriptions.count > 0) {
+                setIsSubscribed(true)
                 setSubscriptionInfo(subscriptions.list[0])
+                console.log("User is subscribed to this API:", subscriptions.list[0])
+              } else {
+                setIsSubscribed(false)
+                setSubscriptionInfo(null)
+                console.log("User is not subscribed to this API")
               }
             } catch (subscriptionError) {
               console.error("Error fetching subscriptions:", subscriptionError)
+              setIsSubscribed(false)
             }
           }
-        } catch (apiError) {
+        } catch (apiError: any) {
           console.error("Error fetching API details:", apiError)
           if (apiError instanceof TypeError && apiError.message.includes("NetworkError")) {
             setError(
               "Network error: Unable to connect to the WSO2 API Manager. This may be due to CORS restrictions or the server being unavailable.",
             )
           } else {
-            setError(`Failed to fetch API details: ${apiError.message}`)
+            setError(`Failed to fetch API details: ${apiError?.message || 'Unknown error'}`)
           }
         }
       } catch (err) {
@@ -220,9 +242,19 @@ export function ApiDetail({ baseUrl, apiId }: ApiDetailProps) {
     <div className="min-h-screen bg-background flex flex-col">
       {/* API Info Header */}
       <div className="bg-gradient-to-b from-background to-muted/20 border-b">
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-6">
+          {/* Breadcrumbs */}
+          <Breadcrumb 
+            segments={[
+              { name: "API Marketplace", href: "/" },
+              { name: "WSO2 APIs", href: "/wso2" },
+              { name: api.name }
+            ]} 
+            className="mb-4" 
+          />
+          
           {/* Back Button & Subscribe */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <Button
               variant="ghost"
               size="sm"
@@ -248,11 +280,11 @@ export function ApiDetail({ baseUrl, apiId }: ApiDetailProps) {
           </div>
 
           {/* API Header Content */}
-          <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-6">
             {/* API Logo/Thumbnail */}
             {thumbnailUrl && (
               <div className="flex justify-center md:justify-start">
-                <div className="relative h-32 w-32 rounded-xl overflow-hidden border-2 border-muted shadow-md">
+                <div className="relative h-28 w-28 rounded-xl overflow-hidden border border-muted shadow-md">
                   <Image
                     src={thumbnailUrl}
                     alt={`${api.name} thumbnail`}
@@ -264,9 +296,9 @@ export function ApiDetail({ baseUrl, apiId }: ApiDetailProps) {
             )}
 
             {/* API Info */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
-                <h1 className="text-3xl font-bold mb-2">{api.name}</h1>
+                <h1 className="text-2xl font-bold mb-1">{api.name}</h1>
                 <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                   <span>Version {api.version}</span>
                   <span>•</span>
@@ -289,7 +321,7 @@ export function ApiDetail({ baseUrl, apiId }: ApiDetailProps) {
                     <Badge
                       key={tag}
                       variant="secondary"
-                      className="px-3 py-1"
+                      className="px-2 py-1 text-xs"
                     >
                       {tag}
                     </Badge>
@@ -302,12 +334,12 @@ export function ApiDetail({ baseUrl, apiId }: ApiDetailProps) {
       </div>
 
       {/* Main Content Area */}
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-          {/* Content */}
-          <div className="xl:col-span-9">
+      <div className="container mx-auto px-4 py-6 flex-grow">
+        <div className="grid grid-cols-12 gap-6">
+          {/* Content - Tab panels */}
+          <div className="col-span-12 lg:col-span-8 xl:col-span-9">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="bg-transparent p-0 mb-6 sticky top-0 z-10 border-b border-muted">
+              <TabsList className="bg-transparent p-0 mb-4 sticky top-0 z-10 border-b border-muted">
                 <TabsTrigger value="overview" className="tab-button">
                   <Info className="h-5 w-5 mr-2" />
                   Overview
@@ -320,14 +352,18 @@ export function ApiDetail({ baseUrl, apiId }: ApiDetailProps) {
                   <Code className="h-5 w-5 mr-2" />
                   API Console
                 </TabsTrigger>
+                <TabsTrigger value="applications" className="tab-button">
+                  <Layout className="h-5 w-5 mr-2" />
+                  Applications
+                </TabsTrigger>
               </TabsList>
 
               {/* Overview Tab */}
-              <TabsContent value="overview" className="space-y-8 mt-0">
+              <TabsContent value="overview" className="space-y-6 mt-0">
                 {/* Description */}
                 <section className="prose prose-slate max-w-none">
-                  <h2 className="flex items-center gap-2 text-2xl font-semibold">
-                    <BookOpen className="h-6 w-6 text-primary" />
+                  <h2 className="flex items-center gap-2 text-xl font-semibold">
+                    <BookOpen className="h-5 w-5 text-primary" />
                     Description
                   </h2>
                   {api.description ? (
@@ -340,41 +376,41 @@ export function ApiDetail({ baseUrl, apiId }: ApiDetailProps) {
                 {/* Endpoints */}
                 {api.endpointURLs && api.endpointURLs.length > 0 && (
                   <section>
-                    <h2 className="flex items-center gap-2 text-2xl font-semibold mb-4">
-                      <Layers className="h-6 w-6 text-primary" />
+                    <h2 className="flex items-center gap-2 text-xl font-semibold mb-3">
+                      <Layers className="h-5 w-5 text-primary" />
                       Endpoints
                     </h2>
-                    <div className="space-y-4">
-                      {api.endpointURLs.map((endpoint, index) => (
+                    <div className="space-y-3">
+                      {api.endpointURLs.map((endpoint: Endpoint, index: number) => (
                         <div
                           key={index}
-                          className="p-4 rounded-lg border bg-muted/20"
+                          className="p-3 rounded-lg border bg-muted/20"
                         >
-                          <div className="space-y-3">
+                          <div className="space-y-2">
                             <h3 className="font-medium">
                               {endpoint.environmentDisplayName || "Default"}
                             </h3>
-                            <div className="space-y-2">
-                              {endpoint.URLs.https && (
+                            <div className="space-y-1.5">
+                              {endpoint.URLs?.https && (
                                 <div className="space-y-1">
-                                  <div className="text-sm text-muted-foreground">HTTPS</div>
-                                  <code className="bg-background px-3 py-2 rounded-lg text-sm flex-1 border shadow-sm">
+                                  <div className="text-xs text-muted-foreground">HTTPS</div>
+                                  <code className="bg-background px-3 py-2 rounded-lg text-xs flex-1 border shadow-sm overflow-auto">
                                     {endpoint.URLs.https}
                                   </code>
                                 </div>
                               )}
-                              {endpoint.URLs.http && (
+                              {endpoint.URLs?.http && (
                                 <div className="space-y-1">
-                                  <div className="text-sm text-muted-foreground">HTTP</div>
-                                  <code className="bg-background px-3 py-2 rounded-lg text-sm flex-1 border shadow-sm">
+                                  <div className="text-xs text-muted-foreground">HTTP</div>
+                                  <code className="bg-background px-3 py-2 rounded-lg text-xs flex-1 border shadow-sm overflow-auto">
                                     {endpoint.URLs.http}
                                   </code>
                                 </div>
                               )}
-                              {endpoint.URLs.wss && (
+                              {endpoint.URLs?.wss && (
                                 <div className="space-y-1">
-                                  <div className="text-sm text-muted-foreground">WebSocket</div>
-                                  <code className="bg-background px-3 py-2 rounded-lg text-sm flex-1 border shadow-sm">
+                                  <div className="text-xs text-muted-foreground">WebSocket</div>
+                                  <code className="bg-background px-3 py-2 rounded-lg text-xs flex-1 border shadow-sm overflow-auto">
                                     {endpoint.URLs.wss}
                                   </code>
                                 </div>
@@ -391,19 +427,19 @@ export function ApiDetail({ baseUrl, apiId }: ApiDetailProps) {
                 {api.businessInformation &&
                   (api.businessInformation.businessOwner || api.businessInformation.technicalOwner) && (
                     <section>
-                      <h2 className="flex items-center gap-2 text-2xl font-semibold mb-4">
-                        <Info className="h-6 w-6 text-primary" />
+                      <h2 className="flex items-center gap-2 text-xl font-semibold mb-3">
+                        <Info className="h-5 w-5 text-primary" />
                         Business Information
                       </h2>
-                      <div className="grid md:grid-cols-2 gap-6">
+                      <div className="grid md:grid-cols-2 gap-4">
                         {api.businessInformation.businessOwner && (
-                          <div className="p-4 rounded-lg border bg-muted/20">
-                            <h3 className="font-medium mb-2">Business Owner</h3>
+                          <div className="p-3 rounded-lg border bg-muted/20">
+                            <h3 className="font-medium mb-1">Business Owner</h3>
                             <p>{api.businessInformation.businessOwner}</p>
                             {api.businessInformation.businessOwnerEmail && (
                               <a
                                 href={`mailto:${api.businessInformation.businessOwnerEmail}`}
-                                className="text-primary hover:underline text-sm mt-2 inline-block"
+                                className="text-primary hover:underline text-sm mt-1 inline-block"
                               >
                                 {api.businessInformation.businessOwnerEmail}
                               </a>
@@ -411,13 +447,13 @@ export function ApiDetail({ baseUrl, apiId }: ApiDetailProps) {
                           </div>
                         )}
                         {api.businessInformation.technicalOwner && (
-                          <div className="p-4 rounded-lg border bg-muted/20">
-                            <h3 className="font-medium mb-2">Technical Owner</h3>
+                          <div className="p-3 rounded-lg border bg-muted/20">
+                            <h3 className="font-medium mb-1">Technical Owner</h3>
                             <p>{api.businessInformation.technicalOwner}</p>
                             {api.businessInformation.technicalOwnerEmail && (
                               <a
                                 href={`mailto:${api.businessInformation.technicalOwnerEmail}`}
-                                className="text-primary hover:underline text-sm mt-2 inline-block"
+                                className="text-primary hover:underline text-sm mt-1 inline-block"
                               >
                                 {api.businessInformation.technicalOwnerEmail}
                               </a>
@@ -444,17 +480,29 @@ export function ApiDetail({ baseUrl, apiId }: ApiDetailProps) {
                 )}
               </TabsContent>
 
+              {/* Applications Tab */}
+              <TabsContent value="applications" className="mt-0">
+                {isAuthenticated && wso2AuthService && (
+                  <ApplicationsTab
+                    baseUrl={baseUrl}
+                    authService={wso2AuthService}
+                    onApplicationSelect={setSelectedApplicationId}
+                    selectedApplicationId={selectedApplicationId}
+                  />
+                )}
+              </TabsContent>
+
               {/* Console Tab */}
               <TabsContent value="console" className="mt-0">
                 {isAuthenticated ? (
                   swagger ? (
-                    isSubscribed && subscriptionInfo ? (
+                    isSubscribed && subscriptionInfo && wso2AuthService ? (
                       <div className="rounded-lg bg-muted/20">
                         <ApiConsole
                           baseUrl={baseUrl}
                           authService={wso2AuthService}
                           api={api}
-                          applicationId={subscriptionInfo.applicationId}
+                          applicationId={selectedApplicationId || subscriptionInfo.applicationId}
                         />
                       </div>
                     ) : (
@@ -507,57 +555,122 @@ export function ApiDetail({ baseUrl, apiId }: ApiDetailProps) {
             </Tabs>
           </div>
 
-          {/* Sidebar */}
-          <div className="xl:col-span-3">
-            <div className="sticky top-4 space-y-6">
-              {/* API Details */}
-              <div className="p-4 rounded-lg border bg-muted/20">
-                <h3 className="font-medium mb-4">API Details</h3>
-                <div className="space-y-4 text-sm">
-                  <div>
-                    <div className="text-muted-foreground mb-1">Context</div>
-                    <code className="bg-background px-3 py-1 rounded text-xs">
+          {/* API Sidebar */}
+          <div className="col-span-12 lg:col-span-4 xl:col-span-3 space-y-4">
+            {/* API Status */}
+            <div className="rounded-lg border bg-card p-4 shadow-sm">
+              <h3 className="font-medium mb-3 flex items-center gap-1.5">
+                <AlertCircle className="h-4 w-4 text-primary" />
+                API Status
+              </h3>
+              <div className="flex flex-col gap-2.5">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Lifecycle Status</span>
+                  <Badge 
+                    className="text-xs"
+                    style={{ 
+                      backgroundColor: getStatusColor(api.lifeCycleStatus),
+                      color: "#ffffff"
+                    }}
+                  >
+                    {api.lifeCycleStatus}
+                  </Badge>
+                </div>
+
+                {api.createdTime && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Created</span>
+                    <span className="text-sm">{formatDate(api.createdTime)}</span>
+                  </div>
+                )}
+
+                {api.lastUpdatedTime && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Updated</span>
+                    <span className="text-sm">{formatDate(api.lastUpdatedTime)}</span>
+                  </div>
+                )}
+
+                {isSubscribed && (
+                  <div className="flex justify-between mt-1">
+                    <span className="text-sm text-muted-foreground">Status</span>
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                      Subscribed
+                    </Badge>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Context Info */}
+            <div className="rounded-lg border bg-card p-4 shadow-sm">
+              <h3 className="font-medium mb-3 flex items-center gap-1.5">
+                <TagIcon className="h-4 w-4 text-primary" />
+                API Details
+              </h3>
+              <div className="flex flex-col gap-2.5">
+                {api.context && (
+                  <div className="space-y-1">
+                    <span className="text-sm text-muted-foreground">Context</span>
+                    <code className="block bg-muted px-2 py-1 rounded text-xs font-mono w-full overflow-x-auto">
                       {api.context}
                     </code>
                   </div>
-                  {api.type && (
-                    <div>
-                      <div className="text-muted-foreground mb-1">Type</div>
-                      <div>{api.type}</div>
-                    </div>
-                  )}
-                  <div>
-                    <div className="text-muted-foreground mb-1">Created</div>
-                    <div>{formatDate(api.createdTime)}</div>
+                )}
+
+                {api.type && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Type</span>
+                    <span className="text-sm">{api.type}</span>
                   </div>
-                  <div>
-                    <div className="text-muted-foreground mb-1">Last Updated</div>
-                    <div>{formatDate(api.lastUpdatedTime)}</div>
-                  </div>
-                  {isSubscribed && subscriptionInfo && (
-                    <div>
-                      <div className="text-muted-foreground mb-1">Subscription</div>
-                      <Badge variant="outline" className="mt-1">
-                        Active
-                      </Badge>
+                )}
+
+                {api.categories && api.categories.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="text-sm text-muted-foreground">Categories</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {api.categories.map((category) => (
+                        <Badge key={category} variant="secondary" className="text-xs">
+                          {category}
+                        </Badge>
+                      ))}
                     </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Additional Actions */}
+            {isAuthenticated && (
+              <div className="rounded-lg border bg-card p-4 shadow-sm">
+                <h3 className="font-medium mb-3 flex items-center gap-1.5">
+                  <Layout className="h-4 w-4 text-primary" />
+                  Actions
+                </h3>
+                <div className="flex flex-col gap-3">
+                  {!isSubscribed ? (
+                    <Button 
+                      onClick={() => setSubscribeDialogOpen(true)}
+                      className="w-full"
+                      style={{
+                        backgroundColor: theme?.buttonPrimaryColor || "#0070f3",
+                        color: theme?.buttonTextColor || "#ffffff",
+                      }}
+                    >
+                      Subscribe to API
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="outline" 
+                      className="w-full" 
+                      onClick={() => setActiveTab('console')}
+                    >
+                      Try API
+                    </Button>
                   )}
                 </div>
               </div>
-
-              {/* Monetization Info */}
-              {api.monetization?.enabled && (
-                <div className="p-4 rounded-lg border bg-amber-50/50 border-amber-200">
-                  <h3 className="font-medium mb-4">Monetization</h3>
-                  <Alert className="bg-transparent border-none p-0">
-                    <AlertCircle className="h-4 w-4 text-amber-500" />
-                    <AlertDescription className="text-amber-700">
-                      This API is monetized. Subscription may incur charges based on usage.
-                    </AlertDescription>
-                  </Alert>
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>

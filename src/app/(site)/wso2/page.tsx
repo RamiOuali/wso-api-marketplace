@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Loader2, LogIn, RefreshCw } from "lucide-react"
 import { useAuth } from "@/providers/authContext"
 import { useThemeContext } from "@/providers/ThemeProvider"
+import { Breadcrumb } from "@/components/ui/breadcrumb" 
 
 export default function WSO2Page() {
   const { theme } = useThemeContext()
@@ -45,10 +46,17 @@ export default function WSO2Page() {
     boxShadow: theme?.cardShadow || "0 2px 4px rgba(0,0,0,0.1)",
   }
 
+  // Breadcrumbs for WSO2 page
+  const breadcrumbSegments = [
+    { name: "API Marketplace", href: "/" },
+    { name: "WSO2 APIs" }
+  ]
+
   // If not authenticated with Identity Server, show login prompt
   if (!isAuthenticated) {
     return (
       <div className="container mx-auto py-8">
+        <Breadcrumb segments={breadcrumbSegments} className="mb-6" />
         <div className="max-w-md mx-auto">
           <Card style={cardStyle}>
             <CardHeader>
@@ -76,6 +84,7 @@ export default function WSO2Page() {
   if (!wso2AuthService) {
     return (
       <div className="container mx-auto py-8">
+        <Breadcrumb segments={breadcrumbSegments} className="mb-6" />
         <div className="max-w-md mx-auto">
           <Card style={cardStyle}>
             <CardHeader>
@@ -103,6 +112,7 @@ export default function WSO2Page() {
   return (
     <div className="container mx-auto py-8">
       <div>
+        <Breadcrumb segments={breadcrumbSegments} className="mb-6" />
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1

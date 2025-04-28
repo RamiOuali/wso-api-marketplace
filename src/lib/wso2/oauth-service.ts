@@ -50,84 +50,188 @@ export class WSO2OAuthService {
   /**
    * Generate OAuth keys for an application
    * @param applicationId - Application ID
-   * @returns Promise with generated OAuth keys
+   * @param keyType - Key type (PRODUCTION or SANDBOX)
+   * @returns Promise with generated OAuth keys and token
    */
-  async generateOAuthKeys(applicationId: string): Promise<any> {
+  async generateOAuthKeys(applicationId: string, keyType: "PRODUCTION" | "SANDBOX" = "PRODUCTION"): Promise<any> {
     try {
       const token = await this.authService.getValidAccessToken();
       if (!token) {
         throw new Error("No valid access token available");
       }
 
-      // First, create key mapping
-      const keyMappingPayload = {
-        keyType: "PRODUCTION",
-        keyManager: "Resident Key Manager",
-        grantTypesToBeSupported: [
-          "password",
-          "client_credentials",
-          "authorization_code",
-          "refresh_token"
-        ],
-        callbackUrl: ["http://localhost:3000/callback"],
-        additionalProperties: {},
-        keySecurityType: "DIRECT",
-        mode: "CREATED"
-      };
-
-      const mappingResponse = await fetch(
+      // First check if keys already exist
+      console.log('Checking for existing OAuth keys...');
+      const existingKeysResponse = await fetch(
         `${this.baseUrl}/api/am/devportal/v3/applications/${applicationId}/oauth-keys`,
         {
-          method: "POST",
+          method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-          },
-          body: JSON.stringify(keyMappingPayload),
+          }
         }
       );
 
-      if (!mappingResponse.ok) {
-        throw new Error(`Failed to create OAuth key mapping: ${mappingResponse.statusText}`);
+      if (existingKeysResponse.ok) {
+        const existingKeys = await existingKeysResponse.json();
+        if (existingKeys.list && existingKeys.list.length > 0) {
+          const existingKey = existingKeys.list.find((key: any) => key.keyType === keyType);
+          if (existingKey) {
+            // For DefaultApplication, we should always use existing keys
+            if (existingKey.consumerKey && existingKey.consumerSecret) {
+              console.log('Using existing OAuth keys for DefaultApplication...');
+              // Generate new token using existing keys
+              const generateTokenPayload = {
+                consumerKey: existingKey.consumerKey,
+                consumerSecret: existingKey.consumerSecret,
+                validityPeriod: 3600,
+                scopes: ["default"],
+                grantType: "client_credentials"
+              };
+
+              const tokenResponse = await fetch(
+                `${this.baseUrl}/api/am/devportal/v3/applications/${applicationId}/oauth-keys/${existingKey.keyMappingId}/generate-token`,
+                {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify(generateTokenPayload),
+                }
+              );
+
+              if (!tokenResponse.ok) {
+                const errorText = await tokenResponse.text();
+                throw new Error(
+                  `Failed to generate token: ${tokenResponse.status} ${tokenResponse.statusText}\n` +
+                  `Details: ${errorText}`
+                );
+              }
+
+              const tokenResult = await tokenResponse.json();
+              return {
+                ...existingKey,
+                token: tokenResult
+              };
+            }
+          }
+        }
       }
 
-      const mapping = await mappingResponse.json();
-
-      // Then, generate keys using the mapping
-      const generatePayload = {
-        keyType: "PRODUCTION",
+      // Only try to generate new keys if we couldn't find or use existing ones
+      console.log('Generating new OAuth keys...');
+      const generateKeysPayload = {
+        keyType: keyType,
+        keyManager: "Resident Key Manager",
         grantTypesToBeSupported: [
           "password",
-          "client_credentials",
-          "authorization_code",
-          "refresh_token"
+          "client_credentials"
         ],
-        callbackUrl: ["http://localhost:3000/callback"],
-        additionalProperties: {},
-        keyManager: "Resident Key Manager",
-        validityTime: 3600,
-        scopes: ["default"]
+        callbackUrl: "http://sample.com/callback/url",
+        scopes: [
+          "am_application_scope",
+          "default"
+        ],
+        validityTime: "3600",
+        additionalProperties: {}
       };
 
-      const generateResponse = await fetch(
-        `${this.baseUrl}/api/am/devportal/v3/applications/${applicationId}/oauth-keys/${mapping.keyMappingId}/generate-token`,
+      const keysResponse = await fetch(
+        `${this.baseUrl}/api/am/devportal/v3/applications/${applicationId}/generate-keys`,
         {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(generatePayload),
+          body: JSON.stringify(generateKeysPayload),
         }
       );
 
-      if (!generateResponse.ok) {
-        throw new Error(`Failed to generate OAuth token: ${generateResponse.statusText}`);
+      if (!keysResponse.ok) {
+        const errorText = await keysResponse.text();
+        let errorDetails;
+        try {
+          errorDetails = JSON.parse(errorText);
+        } catch {
+          errorDetails = errorText;
+        }
+
+        // If we get an error about the application already being registered,
+        // we need to fetch the existing keys again and use those
+        if (errorDetails?.description?.includes("Application 'DefaultApplication' is already registered") || 
+            keysResponse.status === 409) {
+          console.log('Application already registered, fetching existing keys...');
+          const retryResponse = await fetch(
+            `${this.baseUrl}/api/am/devportal/v3/applications/${applicationId}/oauth-keys`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              }
+            }
+          );
+
+          if (retryResponse.ok) {
+            const existingKeys = await retryResponse.json();
+            if (existingKeys.list && existingKeys.list.length > 0) {
+              const existingKey = existingKeys.list.find((key: any) => key.keyType === keyType);
+              if (existingKey) {
+                // Generate new token using existing keys
+                const generateTokenPayload = {
+                  consumerKey: existingKey.consumerKey,
+                  consumerSecret: existingKey.consumerSecret,
+                  validityPeriod: 3600,
+                  scopes: ["default"],
+                  grantType: "client_credentials"
+                };
+
+                const tokenResponse = await fetch(
+                  `${this.baseUrl}/api/am/devportal/v3/applications/${applicationId}/oauth-keys/${existingKey.keyMappingId}/generate-token`,
+                  {
+                    method: "POST",
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(generateTokenPayload),
+                  }
+                );
+
+                if (!tokenResponse.ok) {
+                  throw new Error(`Failed to generate token: ${tokenResponse.statusText}`);
+                }
+
+                const tokenResult = await tokenResponse.json();
+                return {
+                  ...existingKey,
+                  token: tokenResult
+                };
+              }
+            }
+          }
+        }
+        
+        console.error('OAuth key generation failed:', {
+          status: keysResponse.status,
+          statusText: keysResponse.statusText,
+          error: errorDetails
+        });
+        
+        throw new Error(
+          `Failed to generate OAuth keys: ${keysResponse.status} ${keysResponse.statusText}\n` +
+          `Details: ${JSON.stringify(errorDetails, null, 2)}`
+        );
       }
 
-      return await generateResponse.json();
+      const result = await keysResponse.json();
+      return result;
+      
     } catch (error) {
-      console.error("Error generating OAuth keys:", error);
+      console.error("Error in OAuth key generation process:", error);
       throw error;
     }
   }
@@ -146,7 +250,7 @@ export class WSO2OAuthService {
       }
 
       const payload = {
-        validityTime: 3600,
+        validityPeriod: 3600,
         scopes: ["default"],
         revokeToken: false
       };

@@ -13,7 +13,7 @@ import { Pagination } from "@/components/ui/pagination"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Calendar, ExternalLink, Filter, Search, Star, Tag, User } from "lucide-react"
+import { AlertCircle, Calendar, ExternalLink, Filter, Search, Star, Tag, User, LayoutGrid, List, ArrowDownAZ, Clock, TagIcon, Loader2 } from "lucide-react"
 import Image from "next/image"
 import { useThemeContext } from "@/providers/ThemeProvider"
 import { Separator } from "@/components/ui/separator"
@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { debounce } from "@/lib/utils"
 import { useAuth } from "@/providers/authContext"
+import { cn } from "@/lib/utils"
+import { motion } from "framer-motion"
 
 interface WSO2ApiListProps {
   baseUrl: string
@@ -50,6 +52,10 @@ export function WSO2ApiList({ baseUrl }: WSO2ApiListProps) {
   const [filterStatus, setFilterStatus] = useState<string | null>(null)
   const [initialLoadComplete, setInitialLoadComplete] = useState<boolean>(false)
   const [subscriptions, setSubscriptions] = useState<string[]>([]) // Store subscribed API IDs
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [sortBy, setSortBy] = useState<'name' | 'date'>('name')
+  const [allTags, setAllTags] = useState<string[]>([])
 
   // Memoize the API and Subscription services
   const apiService = useMemo(() => {
@@ -103,15 +109,14 @@ export function WSO2ApiList({ baseUrl }: WSO2ApiListProps) {
 
     try {
       const offset = (currentPage - 1) * limit
-      const query = searchQuery ? searchQuery : undefined
-      const response = await apiService.getApis(limit, offset, query)
+      const response = await apiService.getApis(limit, offset, searchQuery)
 
       setApis(response.list)
       setTotalApis(response.pagination?.total || 0)
 
-      // Fetch thumbnails for APIs that have them
+      // Fetch thumbnails for APIs that have thumbnailUri
       const thumbnailPromises = response.list
-        .filter((api) => api.hasThumbnail)
+        .filter((api) => api.thumbnailUri)
         .map(async (api) => {
           try {
             const thumbnailBlob = await apiService.getApiThumbnail(api.id)
@@ -133,20 +138,21 @@ export function WSO2ApiList({ baseUrl }: WSO2ApiListProps) {
       })
 
       setThumbnails((prev) => ({ ...prev, ...newThumbnails }))
-    } catch (apiError) {
-      console.error("Error fetching APIs:", apiError)
+    } catch (err) {
+      console.error("Error fetching APIs:", err)
+      const apiError = err as Error
       if (apiError instanceof TypeError && apiError.message.includes("NetworkError")) {
         setError(
           "Network error: Unable to connect to the WSO2 API Manager. This may be due to CORS restrictions or the server being unavailable.",
         )
       } else {
-        setError(`Failed to fetch APIs: ${apiError.message}`)
+        setError(`Failed to fetch APIs: ${apiError?.message || 'Unknown error'}`)
       }
     } finally {
       setLoading(false)
       setInitialLoadComplete(true)
     }
-  }, [apiService, currentPage, searchQuery, limit, initialLoadComplete])
+  }, [apiService, currentPage, limit, initialLoadComplete, searchQuery])
 
   // Effect for fetching APIs and subscriptions
   useEffect(() => {
@@ -204,6 +210,44 @@ export function WSO2ApiList({ baseUrl }: WSO2ApiListProps) {
     return filterStatus ? apis.filter((api) => api.lifeCycleStatus?.toUpperCase() === filterStatus.toUpperCase()) : apis
   }, [apis, filterStatus])
 
+  // Effect for fetching tags
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const response = await apiService.getTags()
+        if (response && response.list) {
+          const tags = response.list.map((tag) => tag.value)
+          setAllTags(tags)
+        }
+      } catch (error) {
+        console.error('Error fetching tags:', error)
+      }
+    }
+
+    fetchTags()
+  }, [apiService])
+
+  // Filter APIs by tags and sort
+  const filteredAndSortedApis = useMemo(() => {
+    let filtered = apis
+
+    // Apply status filter
+    if (filterStatus) {
+      filtered = filtered.filter(api => 
+        api.lifeCycleStatus?.toUpperCase() === filterStatus.toUpperCase()
+      )
+    }
+    
+    // Apply sort
+    return filtered.sort((a, b) => {
+      if (sortBy === 'name') {
+        return (a.name || '').localeCompare(b.name || '')
+      } else {
+        return new Date(b.createdTime || 0).getTime() - new Date(a.createdTime || 0).getTime()
+      }
+    })
+  }, [apis, filterStatus, sortBy])
+
   // Memoize the skeleton cards to prevent re-renders
   const skeletonCards = useMemo(() => {
     return Array.from({ length: 8 }).map((_, i) => (
@@ -230,242 +274,395 @@ export function WSO2ApiList({ baseUrl }: WSO2ApiListProps) {
     ))
   }, [])
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-        <form onSubmit={handleSearch} className="flex gap-2 w-full md:w-auto">
-          <div className="relative flex-grow">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search APIs by name, version, context, or description..."
-              className="pl-9 bg-background"
-              value={searchInputValue}
-              onChange={handleSearchInputChange}
-              style={{
-                backgroundColor: theme?.inputBackground || "#ffffff",
-                borderColor: theme?.inputBorderColor || "#d1d5db",
-                color: theme?.inputTextColor || "#333333",
-                borderRadius: theme?.inputBorderRadius || "0.375rem",
-              }}
-            />
-          </div>
-          <Button
-            type="submit"
-            style={{
-              backgroundColor: theme?.buttonPrimaryColor || "#0070f3",
-              color: theme?.buttonTextColor || "#ffffff",
-            }}
+  const ApiCard = ({ api, isSubscribed }: { api: APIInfo; isSubscribed: boolean }) => (
+    <div className={cn(
+      "group relative overflow-hidden w-full", // Ensure card takes full width in its container
+      viewMode === 'list' && "flex"
+    )}>
+      {/* API Thumbnail with hover effect */}
+      <div className={cn(
+        "relative overflow-hidden bg-gradient-to-br from-muted/50 to-muted", // Subtle gradient
+        viewMode === 'list' ? "w-40 h-auto shrink-0" : "h-40 w-full", // Adjusted list view thumbnail
+        "transition-all duration-300 group-hover:opacity-90"
+      )}>
+        {api.thumbnailUri ? (
+          <motion.div
+            initial={{ scale: 1 }}
+            whileHover={{ scale: 1.03 }}
+            transition={{ type: "spring", stiffness: 300, damping: 15 }}
+            className="w-full h-full"
           >
-            Search
-          </Button>
-        </form>
+            {thumbnails[api.id] ? (
+              <img
+                src={thumbnails[api.id]}
+                alt={`${api.name} thumbnail`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="h-full w-full bg-muted flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            )}
+          </motion.div>
+        ) : (
+          <motion.div 
+            className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted/50 to-muted"
+            whileHover={{ scale: 1.03 }}
+            transition={{ type: "spring", stiffness: 300, damping: 15 }}
+          >
+            <div className="text-5xl font-bold text-muted-foreground/40">
+              {api.name?.charAt(0)?.toUpperCase() || "A"}
+            </div>
+          </motion.div>
+        )}
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="flex items-center gap-2">
-              <Filter className="h-4 w-4" />
-              {filterStatus ? `Status: ${filterStatus}` : "Filter"}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem
-                className={!filterStatus ? "主menuItemBg-muted/50" : ""}
-                onClick={() => setFilterStatus(null)}
-              >
-                All Statuses
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className={filterStatus === "PUBLISHED" ? "bg-muted/50" : ""}
-                onClick={() => setFilterStatus("PUBLISHED")}
-              >
-                <Badge className="bg-green-100 text-green-800 border-green-200 mr-2">PUBLISHED</Badge>
-                <span>Published</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className={filterStatus === "DEPRECATED" ? "bg-muted/50" : ""}
-                onClick={() => setFilterStatus("DEPRECATED")}
-              >
-                <Badge className="bg-amber-100 text-amber-800 border-amber-200 mr-2">DEPRECATED</Badge>
-                <span>Deprecated</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className={filterStatus === "RETIRED" ? "bg-muted/50" : ""}
-                onClick={() => setFilterStatus("RETIRED")}
-              >
-                <Badge className="bg-red-100 text-red-800 border-red-200 mr-2">RETIRED</Badge>
-                <span>Retired</span>
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Version Badge */}
+        <div className="absolute top-2 right-2 z-10">
+          <Badge variant="secondary" className="bg-black/60 text-white backdrop-blur-sm text-xs px-2 py-0.5">
+            v{api.version}
+          </Badge>
+        </div>
       </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+      {/* Content */}
+      <div className={cn(
+        "flex flex-col flex-1", // Ensure content area fills space
+        viewMode === 'list' ? "p-4" : "p-4"
+      )}>
+        {/* Top section: Title & Rating */}
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex-1 min-w-0 mr-4">
+            <h3 className="text-lg font-semibold line-clamp-1 text-foreground group-hover:text-primary transition-colors duration-150">
+              {api.name}
+            </h3>
+            {api.context && (
+              <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                {api.context}
+              </div>
+            )}
+          </div>
+          {/* Star Rating */}
+          {api.avgRating && parseFloat(api.avgRating) > 0 && (
+            <div className="flex items-center gap-1 text-sm shrink-0">
+              <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+              <span className="font-medium text-foreground">{api.avgRating}</span>
+              {/* Optional: Add number of reviews if available */}
+              {/* <span className="text-xs text-muted-foreground">(12)</span> */}
+            </div>
+          )}
+        </div>
+
+        {/* Description */}
+        <p className={cn(
+          "text-sm text-muted-foreground mb-3 flex-grow", // Use flex-grow for list view
+          viewMode === 'list' ? "line-clamp-2" : "line-clamp-2" // Allow 2 lines always
+        )}>
+          {api.description || "No description available."}
+        </p>
+
+        {/* Business Owner - subtle display */}
+        {api.businessInformation?.businessOwner && (
+          <div className="mb-3 text-xs text-muted-foreground flex items-center gap-1.5">
+            <User className="h-3 w-3" />
+            <span>{api.businessInformation.businessOwner}</span>
+          </div>
+        )}
+
+        {/* Tags - Improved hover */}
+        {api.tags && api.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {api.tags.slice(0, viewMode === 'list' ? 5 : 3).map((tag) => (
+              <Badge
+                key={tag}
+                variant="outline"
+                className={cn(
+                  "px-2 py-0.5 text-xs cursor-pointer transition-all duration-150 ease-in-out",
+                  "border bg-background hover:border-primary/80 hover:bg-primary/10 hover:text-primary"
+                )}
+                style={{
+                  borderColor: theme?.inputBorderColor,
+                  color: theme?.secondaryColor,
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleTagClick(tag);
+                }}
+              >
+                {tag}
+              </Badge>
+            ))}
+            {api.tags.length > (viewMode === 'list' ? 5 : 3) && (
+              <Badge variant="outline" className="px-2 py-0.5 text-xs border bg-background" style={{ borderColor: theme?.inputBorderColor, color: theme?.textColor }}>
+                +{api.tags.length - (viewMode === 'list' ? 5 : 3)}
+              </Badge>
+            )}
+          </div>
+        )}
+
+        {/* Action Button - Placed at the bottom */}
+        <div className="mt-auto pt-2 flex justify-end">
+          <Button
+            size="sm"
+            variant="default" // Use default variant for primary action
+            onClick={(e) => {
+              e.stopPropagation()
+              viewApiDetails(api.id, isSubscribed ? undefined : "Consult api")
+            }}
+            className="gap-1.5"
+            style={{
+              backgroundColor: theme?.buttonPrimaryColor,
+              color: theme?.buttonTextColor,
+              borderRadius: theme?.buttonBorderRadius,
+            }}
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            {isSubscribed ? "View API" : "View API"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+
+  const handleTagClick = (tag: string) => {
+    if (searchQuery === tag) {
+      setSearchQuery("") // Clear search query when deselecting tag
+    } else {
+      setSearchQuery(tag) // Use tag directly as search query
+    }
+    setCurrentPage(1) // Reset to first page when changing tags
+  }
+
+  return (
+    <div className="flex flex-col lg:flex-row gap-8 p-4 md:p-6">
+      {/* Tags Sidebar */}
+      {allTags.length > 0 && (
+        <aside className="w-full lg:w-64 shrink-0">
+          <div className="sticky top-20 space-y-4">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-foreground">
+              <TagIcon className="h-5 w-5 text-muted-foreground" />
+              Browse by Tags
+            </h3>
+            <div className="space-y-1.5">
+              {allTags.map(tag => (
+                <Badge
+                  key={tag}
+                  variant={searchQuery === tag ? "default" : "outline"}
+                  className={cn(
+                    "w-full justify-start py-2 px-3 text-sm cursor-pointer transition-all duration-150 ease-in-out",
+                    "border rounded-md",
+                    searchQuery === tag 
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground hover:border-muted-foreground/50"
+                  )}
+                  onClick={() => handleTagClick(tag)}
+                  style={searchQuery !== tag ? {
+                    borderColor: theme?.inputBorderColor,
+                    color: theme?.textColor,
+                  } : {}}
+                >
+                  <span>{tag}</span>
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </aside>
       )}
 
-      {loading && !initialLoadComplete ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">{skeletonCards}</div>
-      ) : filteredApis.length === 0 ? (
-        <div className="bg-muted/50 rounded-lg p-8 text-center">
-          <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">No APIs Found</h3>
-          <p className="text-muted-foreground">
-            {searchQuery
-              ? "No APIs match your search criteria. Try a different search term."
-              : filterStatus
-                ? `No APIs with status "${filterStatus}" are available.`
-                : "No APIs are available in this WSO2 API Manager instance."}
-          </p>
+      {/* Main Content */}
+      <main className="flex-1 space-y-6 min-w-0">
+        {/* Header: Search, Layout, Sort, Filter */}
+        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+          <form onSubmit={handleSearch} className="flex gap-2 w-full md:w-auto">
+            <div className="relative flex-grow">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search APIs by name, version, context, or description..."
+                className="pl-9 bg-background"
+                value={searchInputValue}
+                onChange={handleSearchInputChange}
+                style={{
+                  backgroundColor: theme?.inputBackground || "#ffffff",
+                  borderColor: theme?.inputBorderColor || "#d1d5db",
+                  color: theme?.inputTextColor || "#333333",
+                  borderRadius: theme?.inputBorderRadius || "0.375rem",
+                }}
+              />
+            </div>
+          </form>
+
+          <div className="flex items-center gap-2">
+            {/* Layout Switch */}
+            <div className="flex items-center bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('grid')}
+                className="px-2"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="px-2"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Sort Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="flex items-center gap-2">
+                  {sortBy === 'name' ? <ArrowDownAZ className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+                  {sortBy === 'name' ? 'Sort by Name' : 'Sort by Date'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setSortBy('name')}>
+                  <ArrowDownAZ className="h-4 w-4 mr-2" />
+                  Sort by Name
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy('date')}>
+                  <Clock className="h-4 w-4 mr-2" />
+                  Sort by Date
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Filter by Status */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" />
+                  {filterStatus ? `Status: ${filterStatus}` : "Filter"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    className={!filterStatus ? "主menuItemBg-muted/50" : ""}
+                    onClick={() => setFilterStatus(null)}
+                  >
+                    All Statuses
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className={filterStatus === "PUBLISHED" ? "bg-muted/50" : ""}
+                    onClick={() => setFilterStatus("PUBLISHED")}
+                  >
+                    <Badge className="bg-green-100 text-green-800 border-green-200 mr-2">PUBLISHED</Badge>
+                    <span>Published</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className={filterStatus === "DEPRECATED" ? "bg-muted/50" : ""}
+                    onClick={() => setFilterStatus("DEPRECATED")}
+                  >
+                    <Badge className="bg-amber-100 text-amber-800 border-amber-200 mr-2">DEPRECATED</Badge>
+                    <span>Deprecated</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className={filterStatus === "RETIRED" ? "bg-muted/50" : ""}
+                    onClick={() => setFilterStatus("RETIRED")}
+                  >
+                    <Badge className="bg-red-100 text-red-800 border-red-200 mr-2">RETIRED</Badge>
+                    <span>Retired</span>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
-      ) : (
-        <>
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Showing {filteredApis.length} of {totalApis} APIs
-              {filterStatus && ` with status "${filterStatus}"`}
-              {searchQuery && ` matching "${searchQuery}"`}
+
+        {/* Error Message */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Loading Skeletons */}
+        {loading && !initialLoadComplete ? (
+          <div className={cn(
+            viewMode === 'grid' 
+              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6"
+              : "flex flex-col gap-4"
+          )}>
+            {skeletonCards}
+          </div>
+        ) : filteredApis.length === 0 ? (
+          <div className="bg-muted/50 rounded-lg p-8 text-center">
+            <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-xl font-semibold mb-2">No APIs Found</h3>
+            <p className="text-muted-foreground">
+              {searchQuery
+                ? "No APIs match your search criteria. Try a different search term."
+                : filterStatus
+                  ? `No APIs with status "${filterStatus}" are available.`
+                  : "No APIs are available in this WSO2 API Manager instance."}
             </p>
           </div>
+        ) : (
+          /* API List Content */
+          <>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Showing {filteredApis.length} of {totalApis} APIs
+                {filterStatus && ` with status "${filterStatus}"`}
+                {searchQuery && ` matching "${searchQuery}"`}
+              </p>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredApis.map((api) => {
-              const isSubscribed = subscriptions.includes(api.id)
-              return (
-                <Card
-                  key={api.id}
-                  className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer border-none shadow-sm"
-                  onClick={() => viewApiDetails(api.id)}
-                  style={{
-                    backgroundColor: theme?.cardBackground || "#ffffff",
-                    borderRadius: theme?.cardBorderRadius || "0.5rem",
-                    boxShadow: theme?.cardShadow || "0 2px 4px rgba(0,0,0,0.1)",
-                  }}
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start gap-3">
-                      {/* API Thumbnail or Icon */}
-                      <div className="flex-shrink-0">
-                        {thumbnails[api.id] ? (
-                          <div className="relative h-12 w-12 rounded-md overflow-hidden border">
-                            <Image
-                              src={thumbnails[api.id] || "/placeholder.svg"}
-                              alt={`${api.name} thumbnail`}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                        ) : (
-                          <div className="h-12 w-12 rounded-md bg-muted flex items-center justify-center text-xl font-bold">
-                            {api.name?.charAt(0) || "A"}
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <CardTitle className="text-lg line-clamp-1">{api.name}</CardTitle>
-                        <CardDescription className="flex items-center gap-1 flex-wrap">
-                          <span className="font-medium">v{api.version}</span>
-                          {api.lifeCycleStatus && (
-                            <Badge className={getStatusColor(api.lifeCycleStatus)}>{api.lifeCycleStatus}</Badge>
-                          )}
-                          {api.avgRating && (
-                            <div className="flex items-center ml-auto">
-                              <Star className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400 mr-0.5" />
-                              <span className="text-xs">{api.avgRating}</span>
-                            </div>
-                          )}
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <Separator className="my-1" />
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground line-clamp-3 mb-3 min-h-[3rem]">
-                      {api.description || "No description available"}
-                    </p>
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {api.tags?.slice(0, 3).map((tag, index) => (
-                        <Badge key={index} variant="outline" className="flex items-center gap-1 text-xs">
-                          <Tag className="h-3 w-3" />
-                          {tag}
-                        </Badge>
-                      ))}
-                      {api.tags && api.tags.length > 3 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{api.tags.length - 3}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center text-xs text-muted-foreground gap-4">
-                      {api.provider && (
-                        <div className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          <span className="truncate max-w-[100px]">{api.provider}</span>
-                        </div>
-                      )}
-                      {api.createdTime && (
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {formatDate(api.createdTime)}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-between pt-2 border-t">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        viewApiDetails(api.id)
-                      }}
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      Details
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        viewApiDetails(api.id, isSubscribed ? undefined : "subscribe")
-                      }}
-                      style={{
-                        backgroundColor: theme?.buttonPrimaryColor || "#0070f3",
-                        color: theme?.buttonTextColor || "#ffffff",
-                      }}
-                      className="flex items-center gap-1"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      {isSubscribed ? "Consult API" : "Consult API"}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              )
-            })}
+            {/* API Grid/List */}
+            <div className={cn(
+              viewMode === 'grid' 
+                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6"
+                : "flex flex-col gap-4"
+            )}>
+              {filteredAndSortedApis.map((api) => {
+                const isSubscribed = subscriptions.includes(api.id)
+                return (
+                  <Card
+                    key={api.id}
+                    className={cn(
+                      "overflow-hidden transition-all duration-200 ease-in-out cursor-pointer border shadow-sm",
+                      "hover:shadow-lg hover:-translate-y-1",
+                      viewMode === 'list' && "flex flex-row items-stretch"
+                    )}
+                    onClick={() => viewApiDetails(api.id)}
+                    style={{
+                      backgroundColor: theme?.cardBackground || "#ffffff",
+                      borderColor: theme?.cardBorderColor || "#e5e7eb",
+                      borderRadius: theme?.cardBorderRadius || "0.75rem", // Slightly larger radius
+                      boxShadow: theme?.cardShadow || "0 1px 3px rgba(0,0,0,0.05)",
+                    }}
+                  >
+                    <ApiCard api={api} isSubscribed={isSubscribed} />
+                  </Card>
+                )
+              })}
+            </div>
+          </>
+        )}
+
+        {/* Loading More Indicator */}
+        {loading && initialLoadComplete && (
+          <div className="flex justify-center py-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
-        </>
-      )}
+        )}
 
-      {/* Show loading indicator when fetching more data */}
-      {loading && initialLoadComplete && (
-        <div className="flex justify-center py-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      )}
-
-      {/* Pagination */}
-      {!loading && totalPages > 1 && (
-        <div className="mt-8 flex justify-center">
-          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
-        </div>
-      )}
+        {/* Pagination */}
+        {!loading && totalPages > 1 && (
+          <div className="mt-8 flex justify-center">
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+          </div>
+        )}
+      </main>
     </div>
   )
 }

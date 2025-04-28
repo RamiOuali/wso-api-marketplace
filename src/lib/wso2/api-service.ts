@@ -1,4 +1,4 @@
-import type { APIListResponse, API } from "./types"
+import type { APIListResponse, API, TagListResponse } from "./types"
 import type { WSO2AuthService } from "./auth-service"
 
 /**
@@ -55,7 +55,7 @@ export class WSO2DevPortalService {
    * Get all APIs
    * @param limit - Maximum number of APIs to return
    * @param offset - Starting point within the complete list of items
-   * @param query - Search query
+   * @param query - Search query or tag
    * @returns Promise with API list response
    */
   async getApis(limit = 25, offset = 0, query?: string): Promise<APIListResponse> {
@@ -76,7 +76,7 @@ export class WSO2DevPortalService {
         if (!response.ok) {
           throw new Error(`Failed to get APIs: ${response.status} ${response.statusText}`)
         }
-
+        
         return (await response.json()) as APIListResponse
       } catch (fetchError) {
         if (fetchError instanceof TypeError && fetchError.message.includes("NetworkError")) {
@@ -222,6 +222,33 @@ export class WSO2DevPortalService {
       return await response.text()
     } catch (error) {
       console.error("Error getting API document content:", error)
+      throw error
+    }
+  }
+
+  /**
+   * Get all tags
+   * @param limit - Maximum number of tags to return
+   * @param offset - Starting point within the complete list of items
+   * @returns Promise with tags list response
+   */
+  async getTags(limit = 25, offset = 0): Promise<TagListResponse> {
+    try {
+      let url = `${this.baseUrl}/api/am/devportal/v3/tags?limit=${limit}&offset=${offset}`
+      const headers = await this.getAuthHeaders()
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: headers,
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to get tags: ${response.status} ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error("Error getting tags:", error)
       throw error
     }
   }

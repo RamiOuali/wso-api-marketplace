@@ -12,27 +12,43 @@ export interface APIListResponse {
 
 // API Info object with basic API details
 export interface APIInfo {
-  id: string
-  name: string
-  description?: string
-  context?: string
-  version?: string
-  type?: string
-  createdTime?: string
-  provider?: string
-  lifeCycleStatus?: string
-  thumbnailUri?: string
-  avgRating?: string
-  throttlingPolicies?: string[]
-  advertiseInfo?: AdvertiseInfo
-  businessInformation?: APIBusinessInformation
-  isSubscriptionAvailable?: boolean
-  monetizationLabel?: string
-  gatewayVendor?: string
-  additionalProperties?: AdditionalProperty[]
-  monetizedInfo?: boolean
-  egress?: boolean
-  subtype?: string
+  id: string;
+  name?: string;
+  description?: string;
+  context?: string;
+  version?: string;
+  type?: string;
+  provider?: string;
+  lifeCycleStatus?: string;
+  thumbnailUri?: string;
+  avgRating?: string;
+  createdTime?: string;
+  tags?: string[];
+  throttlingPolicies?: string[];
+  businessInformation?: {
+    businessOwner?: string | null;
+    businessOwnerEmail?: string | null;
+    technicalOwner?: string | null;
+    technicalOwnerEmail?: string | null;
+  };
+  advertiseInfo?: {
+    advertised: boolean;
+    apiExternalProductionEndpoint?: string | null;
+    apiExternalSandboxEndpoint?: string | null;
+    originalDevPortalUrl?: string | null;
+    apiOwner?: string | null;
+    vendor?: string;
+  };
+  isSubscriptionAvailable?: boolean;
+  monetizationLabel?: string;
+  gatewayVendor?: string;
+  additionalProperties?: Array<{
+    name: string;
+    value: string;
+  }>;
+  monetizedInfo?: boolean;
+  egress?: boolean;
+  subtype?: string;
 }
 
 // Detailed API object
@@ -217,4 +233,16 @@ export interface WSO2Config {
   responseType: string
   homeUrl: string
   baseUrl: string
+}
+
+// Tag response from WSO2 API
+export interface TagInfo {
+  value: string
+  count: number
+}
+
+export interface TagListResponse {
+  count: number
+  list: TagInfo[]
+  pagination: Pagination
 }

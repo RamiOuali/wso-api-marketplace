@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { AlertCircle, Check, Copy, Key, Loader2, Play, Plus, Trash2, Code } from "lucide-react"
+import { AlertCircle, Check, Copy, Key, Loader2, Play, Plus, Trash2, Code, Eye, EyeOff } from "lucide-react"
 import { WSO2ApplicationService } from "@/lib/wso2/application-service"
 import type { WSO2AuthService } from "@/lib/wso2/auth-service"
 import type { API } from "@/lib/wso2/types"
@@ -53,8 +53,12 @@ export function ApiConsole({ baseUrl, api, authService, applicationId }: ApiCons
   const [oauthToken, setOauthToken] = useState<string | null>(null)
   const [isGeneratingOAuthKeys, setIsGeneratingOAuthKeys] = useState<boolean>(false)
   const [isGeneratingOAuthToken, setIsGeneratingOAuthToken] = useState<boolean>(false)
+  const [showSecret, setShowSecret] = useState<boolean>(false)
+  const [isSecretCopied, setIsSecretCopied] = useState<boolean>(false)
+  const [showApiKey, setShowApiKey] = useState<boolean>(false)
+  const [isApiKeyCopied, setIsApiKeyCopied] = useState<boolean>(false)
 
-  // Initialize OAuth service
+  // Initialize OAuth service with token generation method
   const oauthService = new WSO2OAuthService(baseUrl, authService)
 
   const { theme } = useThemeContext()
@@ -127,17 +131,13 @@ export function ApiConsole({ baseUrl, api, authService, applicationId }: ApiCons
     }
   }
 
+  // Fix generateOAuthKeys function
   const generateOAuthKeys = async () => {
     try {
       setIsGeneratingOAuthKeys(true)
       setError(null)
       
-      const keys = await oauthService.generateOAuthKeys(
-        applicationId,
-        keyType as "PRODUCTION" | "SANDBOX",
-        ["client_credentials", "password", "refresh_token"],
-        "http://localhost"
-      )
+      const keys = await oauthService.generateOAuthKeys(applicationId)
       
       setOauthKeys(keys)
       setIsCopied(false)
@@ -149,6 +149,7 @@ export function ApiConsole({ baseUrl, api, authService, applicationId }: ApiCons
     }
   }
 
+  // Fix generateOAuthToken function
   const generateOAuthToken = async () => {
     if (!oauthKeys?.keyMappingId) {
       setError("OAuth keys not generated. Please generate keys first.")
@@ -159,10 +160,10 @@ export function ApiConsole({ baseUrl, api, authService, applicationId }: ApiCons
       setIsGeneratingOAuthToken(true)
       setError(null)
 
-      const tokenResponse = await oauthService.generateOAuthToken(
+      const tokenResponse = await oauthService.regenerateOAuthToken(
         applicationId,
         oauthKeys.keyMappingId,
-        validityPeriod
+        
       )
 
       setOauthToken(tokenResponse.accessToken)
@@ -223,10 +224,12 @@ export function ApiConsole({ baseUrl, api, authService, applicationId }: ApiCons
       const proxyUrl = new URL('/api/wso2-proxy', window.location.origin)
       proxyUrl.searchParams.append('url', targetUrl)
       
+      // Set up headers based on authentication type
       const headers: Record<string, string> = {
         ...requestHeaders,
       }
 
+      // Add authentication header based on selected type
       if (authType === "oauth2" && oauthToken) {
         headers["Authorization"] = `Bearer ${oauthToken}`
       } else if (authType === "apikey" && apiKey) {
@@ -263,9 +266,16 @@ export function ApiConsole({ baseUrl, api, authService, applicationId }: ApiCons
     }
   }
 
+  // Fix Select component type issues
+  const handleKeyTypeChange = (value: string) => {
+    if (value === "PRODUCTION" || value === "SANDBOX") {
+      setKeyType(value)
+    }
+  }
+
   return (
     <div className="space-y-6">
-      {/* Authentication Type Selection */}
+      {/* Authentication Card */}
       <Card style={{ backgroundColor: theme?.cardBackground || "#ffffff" }}>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -297,7 +307,7 @@ export function ApiConsole({ baseUrl, api, authService, applicationId }: ApiCons
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="keyType">Key Type</Label>
-                    <Select value={keyType} onValueChange={setKeyType}>
+                    <Select value={keyType} onValueChange={handleKeyTypeChange}>
                       <SelectTrigger id="keyType">
                         <SelectValue placeholder="Select key type" />
                       </SelectTrigger>
@@ -321,54 +331,114 @@ export function ApiConsole({ baseUrl, api, authService, applicationId }: ApiCons
 
                 {/* OAuth Keys Info */}
                 {oauthKeys ? (
-                  <div className="space-y-2">
-                    <div className="p-4 bg-gray-50 rounded-md">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label>Consumer Key</Label>
-                          <div className="font-mono text-sm truncate">{oauthKeys.consumerKey}</div>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-muted/30 rounded-md p-3">
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <Label className="text-xs text-muted-foreground">Consumer Key</Label>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => {
+                              navigator.clipboard.writeText(oauthKeys.consumerKey)
+                              setIsCopied(true)
+                              setTimeout(() => setIsCopied(false), 2000)
+                            }}
+                          >
+                            {isCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                          </Button>
                         </div>
-                        <div>
-                          <Label>Consumer Secret</Label>
-                          <div className="font-mono text-sm truncate">{oauthKeys.consumerSecret}</div>
+                        <div className="font-mono text-xs bg-background p-1.5 rounded border truncate">
+                          {oauthKeys.consumerKey.substring(0, 24)}...
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <Label className="text-xs text-muted-foreground">Consumer Secret</Label>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => setShowSecret(!showSecret)}
+                            >
+                              {showSecret ? (
+                                <Eye className="h-3 w-3" />
+                              ) : (
+                                <EyeOff className="h-3 w-3" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => {
+                                navigator.clipboard.writeText(oauthKeys.consumerSecret)
+                                setIsSecretCopied(true)
+                                setTimeout(() => setIsSecretCopied(false), 2000)
+                              }}
+                            >
+                              {isSecretCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="font-mono text-xs bg-background p-1.5 rounded border truncate">
+                          {showSecret 
+                            ? oauthKeys.consumerSecret.substring(0, 24) + "..." 
+                            : '•'.repeat(20) + "..."
+                          }
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* OAuth Token Generation */}
                     <div className="flex justify-between items-center">
                       <Button
                         onClick={generateOAuthToken}
                         disabled={isGeneratingOAuthToken}
+                        size="sm"
                       >
                         {isGeneratingOAuthToken ? (
                           <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Generating Token...
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                            Generating...
                           </>
                         ) : (
                           "Generate Access Token"
                         )}
                       </Button>
                       {oauthToken && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            navigator.clipboard.writeText(oauthToken)
-                            setIsCopied(true)
-                            setTimeout(() => setIsCopied(false), 2000)
-                          }}
-                        >
-                          {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(oauthToken)
+                                  setIsCopied(true)
+                                  setTimeout(() => setIsCopied(false), 2000)
+                                }}
+                              >
+                                {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Copy token</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                     </div>
                     
                     {oauthToken && (
-                      <div className="p-4 bg-gray-50 rounded-md">
-                        <Label>Access Token</Label>
-                        <div className="font-mono text-sm break-all">{oauthToken}</div>
+                      <div className="bg-muted/30 p-2 rounded-md">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs text-muted-foreground">Access Token (truncated)</Label>
+                          <Badge variant="outline" className="text-xs">Valid for {Math.floor(validityPeriod/60)} min</Badge>
+                        </div>
+                        <div className="font-mono text-xs mt-1 truncate">
+                          {oauthToken.substring(0, 45)}...
+                        </div>
                       </div>
                     )}
                   </div>
@@ -396,7 +466,7 @@ export function ApiConsole({ baseUrl, api, authService, applicationId }: ApiCons
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="keyType">Key Type</Label>
-                    <Select value={keyType} onValueChange={setKeyType}>
+                    <Select value={keyType} onValueChange={handleKeyTypeChange}>
                       <SelectTrigger id="keyType">
                         <SelectValue placeholder="Select key type" />
                       </SelectTrigger>
@@ -417,7 +487,7 @@ export function ApiConsole({ baseUrl, api, authService, applicationId }: ApiCons
                     />
                   </div>
                 </div>
-                {/* Existing API Key Info and Generate Button */}
+                {/* API Key Display */}
                 {!apiKey ? (
                   <Button
                     onClick={generateApiKey}
@@ -440,9 +510,44 @@ export function ApiConsole({ baseUrl, api, authService, applicationId }: ApiCons
                     )}
                   </Button>
                 ) : (
-                  <div className="p-4 bg-gray-50 rounded-md">
-                    <Label>API Key</Label>
-                    <div className="font-mono text-sm break-all">{apiKey}</div>
+                  <div className="bg-muted/30 rounded-md p-3">
+                    <div className="flex justify-between items-center">
+                      <Label className="text-xs text-muted-foreground">API Key (truncated)</Label>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => setShowApiKey(!showApiKey)}
+                        >
+                          {showApiKey ? (
+                            <Eye className="h-3 w-3" />
+                          ) : (
+                            <EyeOff className="h-3 w-3" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => {
+                            navigator.clipboard.writeText(apiKey)
+                            setIsApiKeyCopied(true)
+                            setTimeout(() => setIsApiKeyCopied(false), 2000)
+                          }}
+                        >
+                          {isApiKeyCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center mt-1">
+                      <div className="font-mono text-xs bg-background p-1.5 rounded border truncate">
+                        {showApiKey ? apiKey.substring(0, 40) + "..." : "•".repeat(20) + "..."}
+                      </div>
+                      <Badge variant="outline" className="text-xs ml-2 shrink-0">
+                        Valid for {Math.floor(validityPeriod/60)} min
+                      </Badge>
+                    </div>
                   </div>
                 )}
               </div>
@@ -451,409 +556,407 @@ export function ApiConsole({ baseUrl, api, authService, applicationId }: ApiCons
         </CardContent>
       </Card>
 
-      {/* Rest of the console UI */}
-      <ScrollArea className="w-full lg:w-96 border rounded-lg bg-background">
-        <div className="p-4">
-          <h3 className="text-lg font-semibold mb-4">Available Endpoints</h3>
-          <div className="space-y-6">
-            {endpoints.map((endpoint, index) => (
-              <div key={index} className="border rounded-lg p-4 hover:bg-slate-50/50 transition-colors">
-                <div className="font-mono text-sm mb-3 text-slate-700 px-3">{endpoint.path}</div>
-                <div className="space-y-2">
-                  {endpoint.methods.map((method: any, methodIndex: number) => (
-                    <div
-                      key={methodIndex}
-                      onClick={() => {
-                        setSelectedEndpoint(endpoint.path)
-                        setSelectedMethod(method.method)
-                        setSelectedEndpointDetails(method)
-                        setRequestParams({})
-                        setRequestBody("")
-                        setResponse(null)
-                        setResponseStatus(null)
-                      }}
-                      className={`flex items-center gap-3 p-3 rounded-md cursor-pointer transition-all
-                        ${selectedEndpoint === endpoint.path && selectedMethod === method.method
-                          ? "bg-slate-100 ring-2 ring-slate-200"
-                          : "hover:bg-slate-50 hover:shadow-sm border border-transparent hover:border-slate-200"
-                        }`}
-                    >
-                      <Badge
-                        className={`w-24 justify-center font-mono text-xs cursor-pointer transform transition-transform hover:scale-105 hover:shadow-sm ${
-                          selectedEndpoint === endpoint.path && selectedMethod === method.method
-                            ? getMethodColor(method.method)
-                            : "bg-slate-100 text-slate-800 hover:bg-slate-200 method-badge-pulse"
-                        }`}
-                      >
-                        {method.method}
-                      </Badge>
-                      <div className="flex-1">
-                        <div className="text-sm font-medium mb-1 flex items-center gap-2">
-                          {method.details.summary || endpoint.path}
-                          <span className="text-xs text-slate-400 hover:text-slate-600">Click to try it out →</span>
-                        </div>
-                        {method.details.description && (
-                          <div className="text-xs text-slate-500 line-clamp-2">
-                            {method.details.description}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </ScrollArea>
-
-      {/* Right Content Area - Console */}
-      <div className="flex-1 min-w-0 flex flex-col">
-        {selectedEndpoint && selectedMethod ? (
-          <div className="flex-1 flex flex-col overflow-hidden bg-background rounded-lg border">
-            {/* API Key Section */}
-            {!apiKey && (
-              <div className="px-6 pt-6">
-                <div className="p-4 rounded-lg border" style={{
-                  backgroundColor: theme?.cardBackground || "#ffffff",
-                  borderColor: theme?.cardBorderColor || "#e5e7eb",
-                }}>
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <h4 className="font-medium">Authentication Required</h4>
-                      <p className="text-sm text-muted-foreground">Generate an API key to start testing endpoints</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <Select 
-                        value={keyType} 
-                        onValueChange={(value: "PRODUCTION" | "SANDBOX") => setKeyType(value)}
-                      >
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Select key type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="PRODUCTION">Production</SelectItem>
-                          <SelectItem value="SANDBOX">Sandbox</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        onClick={generateApiKey}
-                        disabled={isGeneratingKey}
-                        style={{
-                          backgroundColor: theme?.buttonPrimaryColor || "#0070f3",
-                          color: theme?.buttonTextColor || "#ffffff",
+      {/* Main Content Area with side-by-side layout */}
+      <div className="flex gap-6">
+        {/* Endpoints List - Left Side */}
+        <ScrollArea className="h-[calc(100vh-16rem)] w-[400px] border rounded-lg bg-background">
+          <div className="p-4">
+            <h3 className="text-lg font-semibold mb-4">Available Endpoints</h3>
+            <div className="space-y-2">
+              {endpoints.map((endpoint, index) => (
+                <div key={index} className="border rounded-lg hover:shadow-md transition-all duration-200" 
+                  style={{ backgroundColor: theme?.cardBackground || "#ffffff" }}>
+                  <div className="font-mono text-xs mb-1 text-slate-600 px-3 pt-2">{endpoint.path}</div>
+                  <div className="space-y-1 p-2">
+                    {endpoint.methods.map((method: any, methodIndex: number) => (
+                      <div
+                        key={methodIndex}
+                        onClick={() => {
+                          setSelectedEndpoint(endpoint.path)
+                          setSelectedMethod(method.method)
+                          setSelectedEndpointDetails(method)
+                          setRequestParams({})
+                          setRequestBody("")
+                          setResponse(null)
+                          setResponseStatus(null)
                         }}
+                        className={`flex items-center gap-2 p-2 rounded-md cursor-pointer transition-all
+                          ${selectedEndpoint === endpoint.path && selectedMethod === method.method
+                            ? "bg-slate-100 ring-2 ring-slate-200"
+                            : "hover:bg-slate-50"
+                        }`}
                       >
-                        {isGeneratingKey ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <Key className="mr-2 h-4 w-4" />
-                            Generate API Key
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Error Messages */}
-            {error && (
-              <div className="px-6 pt-4">
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Error</AlertTitle>
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              </div>
-            )}
-
-            {/* Main Content */}
-            <div className="flex-1 overflow-hidden p-6">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col h-full">
-                <div className="flex-shrink-0 border-b mb-4 lg:mb-6 pb-2">
-                  <div className="flex flex-col md:flex-row md:items-baseline gap-2 lg:gap-4 mb-4">
-                    <div className="flex items-center gap-2">
-                      <Badge className={getMethodColor(selectedMethod)}>{selectedMethod}</Badge>
-                      <h3 className="text-xl font-medium font-mono" style={{ color: theme?.textColor || "#333333" }}>
-                        {selectedEndpoint}
-                      </h3>
-                    </div>
-                    {apiKey && (
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="font-mono text-xs">
-                          {keyType} KEY
+                        <Badge
+                          className={`w-16 justify-center font-mono text-xs ${
+                            getMethodColor(method.method)
+                          }`}
+                        >
+                          {method.method}
                         </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          Expires in {Math.floor(validityPeriod / 60)} minutes
-                        </Badge>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium truncate">
+                            {method.details.summary || endpoint.path}
+                          </div>
+                        </div>
                       </div>
-                    )}
+                    ))}
                   </div>
-                  <TabsList className="w-full justify-start">
-                    <TabsTrigger value="request" className="flex items-center gap-2">
-                      <Code className="h-4 w-4" />
-                      Request
-                    </TabsTrigger>
-                    <TabsTrigger value="response" className="flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4" />
-                      Response {responseStatus && `(${responseStatus})`}
-                    </TabsTrigger>
-                  </TabsList>
                 </div>
+              ))}
+            </div>
+          </div>
+        </ScrollArea>
 
-                <div className="flex-1 overflow-auto">
-                  <TabsContent value="request" className="h-full">
-                    <ScrollArea className="h-full">
-                      <div className="space-y-6 pb-6">
-                        {/* Parameters Section */}
-                        {selectedEndpointDetails?.parameters?.length > 0 && (
-                          <div className="space-y-4">
-                            <h4 className="text-sm font-medium" style={{ color: theme?.textColor || "#333333" }}>Parameters</h4>
-                            <div className="grid gap-4">
-                              {selectedEndpointDetails.parameters.map((param: any, index: number) => (
-                                <div key={index} className="grid grid-cols-4 gap-4 items-start">
-                                  <div className="space-y-1">
-                                    <Label htmlFor={`param-${param.name}`} className="flex items-center gap-1">
-                                      <span className="font-mono text-sm">{param.name}</span>
-                                      {param.required && <span className="text-red-500">*</span>}
-                                    </Label>
-                                    <div className="flex items-center gap-2">
-                                      <Badge variant="outline" className="text-xs capitalize">
-                                        {param.in}
-                                      </Badge>
-                                      <span className="text-xs text-muted-foreground">
-                                        {param.type || (param.schema && param.schema.type) || "string"}
-                                      </span>
+        {/* Console - Right Side */}
+        <div className="flex-1 min-w-0 flex flex-col">
+          {selectedEndpoint && selectedMethod ? (
+            <div className="flex-1 flex flex-col overflow-hidden bg-background rounded-lg border">
+              {/* API Key Section */}
+              {/* {!apiKey && !oauthToken && (
+                <div className="px-6 pt-6">
+                  <div className="p-4 rounded-lg border" style={{
+                    backgroundColor: theme?.cardBackground || "#ffffff",
+                    borderColor: theme?.cardBorderColor || "#e5e7eb",
+                  }}>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <h4 className="font-medium">Authentication Required</h4>
+                        <p className="text-sm text-muted-foreground">Generate an API key to start testing endpoints</p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <Select 
+                          value={keyType} 
+                          onValueChange={(value: "PRODUCTION" | "SANDBOX") => setKeyType(value)}
+                        >
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Select key type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="PRODUCTION">Production</SelectItem>
+                            <SelectItem value="SANDBOX">Sandbox</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          onClick={generateApiKey}
+                          disabled={isGeneratingKey}
+                          style={{
+                            backgroundColor: theme?.buttonPrimaryColor || "#0070f3",
+                            color: theme?.buttonTextColor || "#ffffff",
+                          }}
+                        >
+                          {isGeneratingKey ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <Key className="mr-2 h-4 w-4" />
+                              Generate API Key
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )} */}
+
+              {/* Error Messages */}
+              {error && (
+                <div className="px-6 pt-4">
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                </div>
+              )}
+
+              {/* Main Content */}
+              <div className="flex-1 overflow-hidden p-6">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col h-full">
+                  <div className="flex-shrink-0 border-b mb-4 lg:mb-6 pb-2">
+                    <div className="flex flex-col md:flex-row md:items-baseline gap-2 lg:gap-4 mb-4">
+                      <div className="flex items-center gap-2">
+                        <Badge className={getMethodColor(selectedMethod)}>{selectedMethod}</Badge>
+                        <h3 className="text-xl font-medium font-mono" style={{ color: theme?.textColor || "#333333" }}>
+                          {selectedEndpoint}
+                        </h3>
+                      </div>
+                      {apiKey && (
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {keyType} KEY
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            Expires in {Math.floor(validityPeriod / 60)} minutes
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                    <TabsList className="w-full justify-start">
+                      <TabsTrigger value="request" className="flex items-center gap-2">
+                        <Code className="h-4 w-4" />
+                        Request
+                      </TabsTrigger>
+                      <TabsTrigger value="response" className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4" />
+                        Response {responseStatus && `(${responseStatus})`}
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
+
+                  <div className="flex-1 overflow-auto">
+                    <TabsContent value="request" className="h-full">
+                      <ScrollArea className="h-full">
+                        <div className="space-y-6 pb-6">
+                          {/* Parameters Section */}
+                          {selectedEndpointDetails?.parameters?.length > 0 && (
+                            <div className="space-y-4">
+                              <h4 className="text-sm font-medium" style={{ color: theme?.textColor || "#333333" }}>Parameters</h4>
+                              <div className="grid gap-4">
+                                {selectedEndpointDetails.parameters.map((param: any, index: number) => (
+                                  <div key={index} className="grid grid-cols-4 gap-4 items-start">
+                                    <div className="space-y-1">
+                                      <Label htmlFor={`param-${param.name}`} className="flex items-center gap-1">
+                                        <span className="font-mono text-sm">{param.name}</span>
+                                        {param.required && <span className="text-red-500">*</span>}
+                                      </Label>
+                                      <div className="flex items-center gap-2">
+                                        <Badge variant="outline" className="text-xs capitalize">
+                                          {param.in}
+                                        </Badge>
+                                        <span className="text-xs text-muted-foreground">
+                                          {param.type || (param.schema && param.schema.type) || "string"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="col-span-3">
+                                      <Input
+                                        id={`param-${param.name}`}
+                                        value={requestParams[param.name] || ""}
+                                        onChange={(e) => handleParamChange(param.name, e.target.value)}
+                                        placeholder={param.description || `Enter ${param.name}`}
+                                        style={{
+                                          backgroundColor: theme?.inputBackground || "#ffffff",
+                                          borderColor: theme?.inputBorderColor || "#d1d5db",
+                                          color: theme?.inputTextColor || "#333333",
+                                        }}
+                                      />
                                     </div>
                                   </div>
-                                  <div className="col-span-3">
-                                    <Input
-                                      id={`param-${param.name}`}
-                                      value={requestParams[param.name] || ""}
-                                      onChange={(e) => handleParamChange(param.name, e.target.value)}
-                                      placeholder={param.description || `Enter ${param.name}`}
-                                      style={{
-                                        backgroundColor: theme?.inputBackground || "#ffffff",
-                                        borderColor: theme?.inputBorderColor || "#d1d5db",
-                                        color: theme?.inputTextColor || "#333333",
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              ))}
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {/* Request Body Section */}
-                        {["POST", "PUT", "PATCH"].includes(selectedMethod) && (
+                          {/* Request Body Section */}
+                          {["POST", "PUT", "PATCH"].includes(selectedMethod) && (
+                            <div className="space-y-4">
+                              <h4 className="text-sm font-medium" style={{ color: theme?.textColor || "#333333" }}>Request Body</h4>
+                              <Textarea
+                                value={requestBody}
+                                onChange={(e) => setRequestBody(e.target.value)}
+                                placeholder="Enter JSON request body"
+                                className="font-mono min-h-[200px]"
+                                style={{
+                                  backgroundColor: theme?.inputBackground || "#ffffff",
+                                  borderColor: theme?.inputBorderColor || "#d1d5db",
+                                  color: theme?.inputTextColor || "#333333",
+                                }}
+                              />
+                            </div>
+                          )}
+
+                          {/* Headers Section */}
                           <div className="space-y-4">
-                            <h4 className="text-sm font-medium" style={{ color: theme?.textColor || "#333333" }}>Request Body</h4>
-                            <Textarea
-                              value={requestBody}
-                              onChange={(e) => setRequestBody(e.target.value)}
-                              placeholder="Enter JSON request body"
-                              className="font-mono min-h-[200px]"
-                              style={{
-                                backgroundColor: theme?.inputBackground || "#ffffff",
-                                borderColor: theme?.inputBorderColor || "#d1d5db",
-                                color: theme?.inputTextColor || "#333333",
-                              }}
-                            />
-                          </div>
-                        )}
-
-                        {/* Headers Section */}
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-medium" style={{ color: theme?.textColor || "#333333" }}>Headers</h4>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                const newName = `header-${Object.keys(requestHeaders).length + 1}`
-                                setRequestHeaders((prev) => ({ ...prev, [newName]: "" }))
-                              }}
-                              style={{
-                                borderColor: theme?.buttonSecondaryColor || "#6c757d",
-                                color: theme?.buttonSecondaryColor || "#6c757d",
-                              }}
-                            >
-                              <Plus className="h-4 w-4 mr-1" />
-                              Add Header
-                            </Button>
-                          </div>
-                          <div className="grid gap-2">
-                            {apiKey && (
-                              <div className="grid grid-cols-4 gap-4 items-center">
-                                <div>
-                                  <Label className="text-sm">apikey</Label>
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-sm font-medium" style={{ color: theme?.textColor || "#333333" }}>Headers</h4>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const newName = `header-${Object.keys(requestHeaders).length + 1}`
+                                  setRequestHeaders((prev) => ({ ...prev, [newName]: "" }))
+                                }}
+                                style={{
+                                  borderColor: theme?.buttonSecondaryColor || "#6c757d",
+                                  color: theme?.buttonSecondaryColor || "#6c757d",
+                                }}
+                              >
+                                <Plus className="h-4 w-4 mr-1" />
+                                Add Header
+                              </Button>
+                            </div>
+                            <div className="grid gap-2">
+                              {authType === "oauth2" && oauthToken && (
+                                <div className="grid gap-2">
+                                  <Label className="text-sm">Authorization</Label>
+                                  <Input value={`Bearer ${oauthToken}`} disabled className="font-mono bg-muted/30" />
                                 </div>
-                                <div className="col-span-3">
+                              )}
+                              {authType === "apikey" && apiKey && (
+                                <div className="grid gap-2">
+                                  <Label className="text-sm">apikey</Label>
                                   <Input value={apiKey} disabled className="font-mono bg-muted/30" />
                                 </div>
-                              </div>
-                            )}
-                            {Object.entries(requestHeaders).map(([name, value], index) => (
-                              <div key={index} className="grid grid-cols-4 gap-4 items-center">
-                                <Input
-                                  value={name}
-                                  onChange={(e) => {
-                                    const newHeaders = { ...requestHeaders }
-                                    delete newHeaders[name]
-                                    newHeaders[e.target.value] = value
-                                    setRequestHeaders(newHeaders)
-                                  }}
-                                  placeholder="Header name"
-                                  className="font-mono text-sm"
-                                  style={{
-                                    backgroundColor: theme?.inputBackground || "#ffffff",
-                                    borderColor: theme?.inputBorderColor || "#d1d5db",
-                                    color: theme?.inputTextColor || "#333333",
-                                  }}
-                                />
-                                <div className="col-span-3 flex gap-2">
+                              )}
+                              {Object.entries(requestHeaders).map(([name, value], index) => (
+                                <div key={index} className="grid grid-cols-4 gap-4 items-center">
                                   <Input
-                                    value={value}
-                                    onChange={(e) => handleHeaderChange(name, e.target.value)}
-                                    placeholder="Header value"
+                                    value={name}
+                                    onChange={(e) => {
+                                      const newHeaders = { ...requestHeaders }
+                                      delete newHeaders[name]
+                                      newHeaders[e.target.value] = value
+                                      setRequestHeaders(newHeaders)
+                                    }}
+                                    placeholder="Header name"
+                                    className="font-mono text-sm"
                                     style={{
                                       backgroundColor: theme?.inputBackground || "#ffffff",
                                       borderColor: theme?.inputBorderColor || "#d1d5db",
                                       color: theme?.inputTextColor || "#333333",
                                     }}
                                   />
-                                  <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => {
-                                      const newHeaders = { ...requestHeaders }
-                                      delete newHeaders[name]
-                                      setRequestHeaders(newHeaders)
-                                    }}
-                                    className="shrink-0"
-                                    style={{
-                                      borderColor: theme?.errorColor || "#ef4444",
-                                      color: theme?.errorColor || "#ef4444",
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+                                  <div className="col-span-3 flex gap-2">
+                                    <Input
+                                      value={value}
+                                      onChange={(e) => handleHeaderChange(name, e.target.value)}
+                                      placeholder="Header value"
+                                      style={{
+                                        backgroundColor: theme?.inputBackground || "#ffffff",
+                                        borderColor: theme?.inputBorderColor || "#d1d5db",
+                                        color: theme?.inputTextColor || "#333333",
+                                      }}
+                                    />
+                                    <Button
+                                      variant="outline"
+                                      size="icon"
+                                      onClick={() => {
+                                        const newHeaders = { ...requestHeaders }
+                                        delete newHeaders[name]
+                                        setRequestHeaders(newHeaders)
+                                      }}
+                                      className="shrink-0"
+                                      style={{
+                                        borderColor: theme?.errorColor || "#ef4444",
+                                        color: theme?.errorColor || "#ef4444",
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Send Request Button */}
-                        <div className="pt-4">
-                          <Button
-                            onClick={sendRequest}
-                            disabled={isSendingRequest || !apiKey}
-                            className="w-full"
-                            style={{
-                              backgroundColor: theme?.buttonPrimaryColor || "#0070f3",
-                              color: theme?.buttonTextColor || "#ffffff",
-                            }}
-                          >
-                            {isSendingRequest ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Sending Request...
-                              </>
-                            ) : (
-                              <>
-                                <Play className="mr-2 h-4 w-4" />
-                                Send Request
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </ScrollArea>
-                  </TabsContent>
-
-                  <TabsContent value="response" className="h-full">
-                    <ScrollArea className="h-full">
-                      {(response || responseStatus) ? (
-                        <div className="space-y-4 pb-6">
-                          <div className="flex items-center gap-4">
-                            {responseStatus && (
-                              <div className="space-y-1">
-                                <div className="text-xs text-muted-foreground">Status</div>
-                                <Badge
-                                  className={
-                                    responseStatus >= 200 && responseStatus < 300
-                                      ? "bg-green-100 text-green-800 border-green-200"
-                                      : responseStatus >= 400
-                                      ? "bg-red-100 text-red-800 border-red-200"
-                                      : "bg-amber-100 text-amber-800 border-amber-200"
-                                  }
-                                >
-                                  {responseStatus}
-                                </Badge>
-                              </div>
-                            )}
-                            {responseTime && (
-                              <div className="space-y-1">
-                                <div className="text-xs text-muted-foreground">Time</div>
-                                <Badge variant="outline">{responseTime} ms</Badge>
-                              </div>
-                            )}
+                              ))}
+                            </div>
                           </div>
 
-                          <div className="relative">
-                            <ScrollArea className="h-[calc(100vh-24rem)] w-full">
-                              <pre
-                                className="p-4 rounded-lg font-mono text-sm whitespace-pre-wrap"
-                                style={{
-                                  backgroundColor: theme?.cardBackground || "#ffffff",
-                                  color: theme?.textColor || "#333333",
-                                }}
-                              >
-                                {typeof response === "object" ? JSON.stringify(response, null, 2) : response}
-                              </pre>
-                            </ScrollArea>
+                          {/* Send Request Button */}
+                          <div className="pt-4">
                             <Button
-                              variant="outline"
-                              size="icon"
-                              className="absolute top-2 right-2"
-                              onClick={() => {
-                                const text = typeof response === "object" ? JSON.stringify(response, null, 2) : response
-                                navigator.clipboard.writeText(text)
-                              }}
+                              onClick={sendRequest}
+                              disabled={isSendingRequest || !apiKey && !oauthToken}
+                              className="w-full"
                               style={{
-                                backgroundColor: theme?.cardBackground || "#ffffff",
-                                borderColor: theme?.buttonSecondaryColor || "#6c757d",
-                                color: theme?.buttonSecondaryColor || "#6c757d",
+                                backgroundColor: theme?.buttonPrimaryColor || "#0070f3",
+                                color: theme?.buttonTextColor || "#ffffff",
                               }}
                             >
-                              <Copy className="h-4 w-4" />
+                              {isSendingRequest ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Sending Request...
+                                </>
+                              ) : (
+                                <>
+                                  <Play className="mr-2 h-4 w-4" />
+                                  Send Request
+                                </>
+                              )}
                             </Button>
                           </div>
                         </div>
-                      ) : (
-                        <div className="flex items-center justify-center h-full text-muted-foreground">
-                          No response yet. Send a request to see the response here.
-                        </div>
-                      )}
-                    </ScrollArea>
-                  </TabsContent>
-                </div>
-              </Tabs>
+                      </ScrollArea>
+                    </TabsContent>
+
+                    <TabsContent value="response" className="h-full">
+                      <ScrollArea className="h-full">
+                        {(response || responseStatus) ? (
+                          <div className="space-y-4 pb-6">
+                            <div className="flex items-center gap-4">
+                              {responseStatus && (
+                                <div className="space-y-1">
+                                  <div className="text-xs text-muted-foreground">Status</div>
+                                  <Badge
+                                    className={
+                                      responseStatus >= 200 && responseStatus < 300
+                                        ? "bg-green-100 text-green-800 border-green-200"
+                                        : responseStatus >= 400
+                                        ? "bg-red-100 text-red-800 border-red-200"
+                                        : "bg-amber-100 text-amber-800 border-amber-200"
+                                    }
+                                  >
+                                    {responseStatus}
+                                  </Badge>
+                                </div>
+                              )}
+                              {responseTime && (
+                                <div className="space-y-1">
+                                  <div className="text-xs text-muted-foreground">Time</div>
+                                  <Badge variant="outline">{responseTime} ms</Badge>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="relative">
+                              <ScrollArea className="h-[calc(100vh-24rem)] w-full">
+                                <pre
+                                  className="p-4 rounded-lg font-mono text-sm whitespace-pre-wrap"
+                                  style={{
+                                    backgroundColor: theme?.cardBackground || "#ffffff",
+                                    color: theme?.textColor || "#333333",
+                                  }}
+                                >
+                                  {typeof response === "object" ? JSON.stringify(response, null, 2) : response}
+                                </pre>
+                              </ScrollArea>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="absolute top-2 right-2"
+                                onClick={() => {
+                                  const text = typeof response === "object" ? JSON.stringify(response, null, 2) : response
+                                  navigator.clipboard.writeText(text)
+                                }}
+                                style={{
+                                  backgroundColor: theme?.cardBackground || "#ffffff",
+                                  borderColor: theme?.buttonSecondaryColor || "#6c757d",
+                                  color: theme?.buttonSecondaryColor || "#6c757d",
+                                }}
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center h-full text-muted-foreground">
+                            No response yet. Send a request to see the response here.
+                          </div>
+                        )}
+                      </ScrollArea>
+                    </TabsContent>
+                  </div>
+                </Tabs>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            Select an endpoint from the left to start testing
-          </div>
-        )}
+          ) : (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              Select an endpoint from the left to start testing
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
