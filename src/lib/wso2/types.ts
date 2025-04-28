@@ -187,3 +187,34 @@ export interface DCRResponse {
 // Add a constant for default WSO2 client credentials
 export const DEFAULT_CLIENT_ID = "PRODUCTION_CLIENT_ID"
 export const DEFAULT_CLIENT_SECRET = "PRODUCTION_CLIENT_SECRET"
+
+export interface AuthState {
+  type: "oauth2" | "apikey"
+  token?: string
+  apiKey?: string
+  keyType: "PRODUCTION" | "SANDBOX"
+  oauthKeys?: {
+    consumerKey: string
+    consumerSecret: string
+    keyMappingId: string
+  }
+}
+
+export interface AuthConfig {
+  grantTypes: string[]
+  scopes: string[]
+  validityPeriod: number
+}
+
+export interface WSO2Config {
+  apiManagerUrl: string
+  authority: string
+  clientId: string
+  clientSecret: string
+  redirectUri: string
+  postLogoutRedirectUri: string
+  scope: string
+  responseType: string
+  homeUrl: string
+  baseUrl: string
+}

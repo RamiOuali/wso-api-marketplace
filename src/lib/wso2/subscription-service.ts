@@ -21,6 +21,10 @@ export class WSO2SubscriptionService {
    */
   async getSubscriptions(applicationId?: string, apiId?: string): Promise<any> {
     try {
+      if (!this.authService.isAuthenticated()) {
+        throw new Error("User is not authenticated");
+      }
+
       const token = await this.authService.getValidAccessToken();
       if (!token) {
         throw new Error("No valid access token available");
@@ -50,7 +54,8 @@ export class WSO2SubscriptionService {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to get subscriptions: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Failed to get subscriptions: ${response.status} ${response.statusText}\n${errorText}`);
       }
 
       return await response.json();
@@ -69,6 +74,10 @@ export class WSO2SubscriptionService {
    */
   async subscribeToApi(apiId: string, applicationId: string, throttlingPolicy: string): Promise<any> {
     try {
+      if (!this.authService.isAuthenticated()) {
+        throw new Error("User is not authenticated");
+      }
+
       const token = await this.authService.getValidAccessToken();
       if (!token) {
         throw new Error("No valid access token available");
@@ -85,12 +94,14 @@ export class WSO2SubscriptionService {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
+          Accept: "application/json",
         },
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to subscribe to API: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Failed to subscribe to API: ${response.status} ${response.statusText}\n${errorText}`);
       }
 
       return await response.json();
@@ -107,6 +118,10 @@ export class WSO2SubscriptionService {
    */
   async unsubscribeFromApi(subscriptionId: string): Promise<boolean> {
     try {
+      if (!this.authService.isAuthenticated()) {
+        throw new Error("User is not authenticated");
+      }
+
       const token = await this.authService.getValidAccessToken();
       if (!token) {
         throw new Error("No valid access token available");
@@ -116,11 +131,13 @@ export class WSO2SubscriptionService {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
+          Accept: "application/json",
         },
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to unsubscribe from API: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Failed to unsubscribe from API: ${response.status} ${response.statusText}\n${errorText}`);
       }
 
       return true;
@@ -136,6 +153,10 @@ export class WSO2SubscriptionService {
    */
   async getSubscriptionThrottlingPolicies(): Promise<any> {
     try {
+      if (!this.authService.isAuthenticated()) {
+        throw new Error("User is not authenticated");
+      }
+
       const token = await this.authService.getValidAccessToken();
       if (!token) {
         throw new Error("No valid access token available");
@@ -150,7 +171,8 @@ export class WSO2SubscriptionService {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to get throttling policies: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Failed to get throttling policies: ${response.status} ${response.statusText}\n${errorText}`);
       }
 
       return await response.json();

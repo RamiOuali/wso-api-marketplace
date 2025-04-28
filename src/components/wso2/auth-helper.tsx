@@ -1,17 +1,86 @@
-
 "use client"
 
 import { useEffect } from "react"
 import { WSO2IdentityAuthService } from "@/lib/identity-auth-service"
 import { WSO2_AUTH_CONFIG } from "@/lib/wso2/auth-config"
+import type { API, AuthState, AuthConfig } from "@/lib/wso2/types"
+
+/**
+ * Helper function to get authentication header for API requests 
+ */
+export function getAuthHeader(authState: AuthState): Record<string, string> {
+  if (authState.type === "oauth2" && authState.token) {
+    return { Authorization: `Bearer ${authState.token}` }
+  }
+  if (authState.type === "apikey" && authState.apiKey) {
+    return { apikey: authState.apiKey }
+  }
+  return {}
+}
+
+/**
+ * Helper function to check if current authentication is valid
+ */
+export function isAuthValid(authState: AuthState, api: API): boolean {
+  if (authState.type === "oauth2") {
+    return !!(authState.oauthKeys && authState.token)
+  }
+  
+  if (authState.type === "apikey") {
+    return !!authState.apiKey
+  }
+
+  return false
+}
+
+/**
+ * Get default OAuth2 configuration for an API
+ */
+export function getDefaultOAuthConfig(api: API): AuthConfig {
+  const apiDefinition = typeof api.apiDefinition === "string" 
+    ? JSON.parse(api.apiDefinition) 
+    : api.apiDefinition
+
+  const securitySchemes = apiDefinition?.components?.securitySchemes || {}
+  const oauth2Scheme = Object.values(securitySchemes).find((scheme: any) => 
+    scheme.type === "oauth2"
+  ) as any
+
+  return {
+    grantTypes: oauth2Scheme?.flows?.clientCredentials?.grantTypes || ["client_credentials"],
+    scopes: oauth2Scheme?.flows?.clientCredentials?.scopes || [],
+    validityPeriod: 3600 // Default 1 hour
+  }
+}
+
+/**
+ * Get supported authentication methods for an API
+ */
+export function getSupportedAuthMethods(api: API): ("oauth2" | "apikey")[] {
+  const apiDefinition = typeof api.apiDefinition === "string" 
+    ? JSON.parse(api.apiDefinition) 
+    : api.apiDefinition
+
+  const securitySchemes = apiDefinition?.components?.securitySchemes || {}
+  const methods: ("oauth2" | "apikey")[] = []
+
+  Object.values(securitySchemes).forEach((scheme: any) => {
+    if (scheme.type === "oauth2") {
+      methods.push("oauth2")
+    }
+    if (scheme.type === "apiKey") {
+      methods.push("apikey")
+    }
+  })
+
+  return methods.length > 0 ? methods : ["oauth2", "apikey"]
+}
 
 /**
  * Helper component to display the current callback URL
- * This helps with debugging redirect URL issues
  */
 export function AuthDebugHelper() {
   useEffect(() => {
-    // Log the callback URL that's being used
     console.log("Current callback URL:", WSO2_AUTH_CONFIG.redirectUri)
   }, [])
 
@@ -22,43 +91,27 @@ export function AuthDebugHelper() {
         <strong>Current callback URL:</strong> {WSO2_AUTH_CONFIG.redirectUri}
       </p>
       <p className="text-sm text-muted-foreground">
-        Make sure this URL exactly matches one of the redirect URIs registered in WSO2 Identity Server.
+        Make sure this URL matches one of the registered redirect URIs in WSO2 Identity Server.
       </p>
-      <div className="mt-4">
-        <h4 className="mb-1 font-medium">How to fix the callback URL mismatch:</h4>
-        <ol className="list-inside list-decimal text-sm">
-          <li>Copy the exact callback URL shown above</li>
-          <li>Log in to WSO2 Identity Server admin console</li>
-          <li>
-            Navigate to Service Providers &gt; Your Application &gt; Inbound Authentication Configuration &gt;
-            OAuth/OpenID Connect Configuration
-          </li>
-          <li>Add or update the Callback URL to match exactly what's shown above</li>
-          <li>Save the changes</li>
-        </ol>
-      </div>
     </div>
   )
 }
 
 /**
  * Helper function to initiate login with WSO2 Identity Server
- * @param redirectAfterLogin Optional URL to redirect to after successful login
  */
 export function initiateWSO2Login(redirectAfterLogin?: string) {
-  // Store the current URL to redirect back after login
   if (redirectAfterLogin) {
     localStorage.setItem("wso2_identity_redirectAfterLogin", redirectAfterLogin)
   } else {
     localStorage.setItem("wso2_identity_redirectAfterLogin", window.location.pathname)
   }
 
-  // Create auth service and initiate login
   const authService = new WSO2IdentityAuthService(
-    WSO2_AUTH_CONFIG.baseUrl,
+    WSO2_AUTH_CONFIG.apiManagerUrl,
     WSO2_AUTH_CONFIG.clientId,
-    WSO2_AUTH_CONFIG.clientSecret,
-    WSO2_AUTH_CONFIG.redirectUri,
+    "",  // Client secret will be managed by the server
+    WSO2_AUTH_CONFIG.redirectUri
   )
 
   authService.login()
@@ -69,15 +122,12 @@ export function initiateWSO2Login(redirectAfterLogin?: string) {
  */
 export function logoutFromWSO2() {
   const authService = new WSO2IdentityAuthService(
-    WSO2_AUTH_CONFIG.baseUrl,
+    WSO2_AUTH_CONFIG.apiManagerUrl,
     WSO2_AUTH_CONFIG.clientId,
-    WSO2_AUTH_CONFIG.clientSecret,
-    WSO2_AUTH_CONFIG.redirectUri,
+    "",  // Client secret will be managed by the server
+    WSO2_AUTH_CONFIG.redirectUri
   )
 
-  // Initialize from storage to get the ID token for proper logout
   authService.initFromStorage()
-
-  // Logout and redirect to home page
-  authService.logout(WSO2_AUTH_CONFIG.homeUrl)
+  authService.logout(WSO2_AUTH_CONFIG.postLogoutRedirectUri)
 }

@@ -1,4 +1,5 @@
 import type { WSO2AuthService } from "./auth-service"
+import { WSO2OAuthService } from "./oauth-service"
 
 /**
  * WSO2 Application Service
@@ -7,10 +8,12 @@ import type { WSO2AuthService } from "./auth-service"
 export class WSO2ApplicationService {
   private baseUrl: string
   private authService: WSO2AuthService
+  private oauthService: WSO2OAuthService
 
   constructor(baseUrl: string, authService: WSO2AuthService) {
     this.baseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl
     this.authService = authService
+    this.oauthService = new WSO2OAuthService(baseUrl, authService)
   }
 
   /**
@@ -302,6 +305,58 @@ export class WSO2ApplicationService {
       return true
     } catch (error) {
       console.error("Error revoking API key:", error)
+      throw error
+    }
+  }
+
+  /**
+   * Get application credentials (both OAuth and API Key if available)
+   * @param applicationId - Application ID
+   * @returns Promise with application credentials
+   */
+  async getApplicationCredentials(applicationId: string): Promise<any> {
+    try {
+      const [oauthKeys, apiKeys] = await Promise.all([
+        this.oauthService.getOAuthKeys(applicationId).catch(() => null),
+        this.getApplicationKeys(applicationId, "PRODUCTION").catch(() => null)
+      ])
+
+      return {
+        oauth: oauthKeys,
+        apiKey: apiKeys
+      }
+    } catch (error) {
+      console.error("Error getting application credentials:", error)
+      throw error
+    }
+  }
+
+  /**
+   * Generate application credentials (both OAuth and API Key)
+   * @param applicationId - Application ID 
+   * @param generateApiKey - Whether to generate API Key
+   * @param generateOAuth - Whether to generate OAuth credentials
+   * @returns Promise with generated credentials
+   */
+  async generateCredentials(
+    applicationId: string,
+    generateApiKey: boolean = true,
+    generateOAuth: boolean = true
+  ): Promise<any> {
+    try {
+      const results: any = {}
+
+      if (generateOAuth) {
+        results.oauth = await this.oauthService.generateOAuthKeys(applicationId)
+      }
+
+      if (generateApiKey) {
+        results.apiKey = await this.generateApiKey(applicationId, "PRODUCTION")
+      }
+
+      return results
+    } catch (error) {
+      console.error("Error generating credentials:", error)
       throw error
     }
   }
