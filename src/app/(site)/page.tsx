@@ -6,7 +6,9 @@ import { Hero } from "@/components/Hero";
 import { Hero2 } from "@/components/Hero2";
 import { Hero3 } from "@/components/Hero3";
 import { useThemeContext } from "@/providers/ThemeProvider";
-import { ApiStepsCompact } from "@/components/steps";
+import AutoProgressingTimeline from "@/components/steps";
+import { ApiFeatureShowcase } from "@/components/api-features";
+
 
 export default function Home() {
   const { theme } = useThemeContext() || { theme: null };
@@ -41,7 +43,8 @@ export default function Home() {
 
       {heroComponent}
          <FeaturedAPIs />
-      <ApiStepsCompact/>
+      <AutoProgressingTimeline/>
+      <ApiFeatureShowcase/>
     </div>
   );
 }

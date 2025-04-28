@@ -1,24 +1,44 @@
 import { type NextRequest, NextResponse } from "next/server"
-import https from "https"
 
-// Create a custom HTTPS agent that ignores SSL certificate errors
-// This is useful for development environments with self-signed certificates
-// WARNING: This should NOT be used in production environments
-const httpsAgent = new https.Agent({
-  rejectUnauthorized: false
-})
+// CORS headers to handle cross-origin requests
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*", // Consider restricting this to specific origins in production
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+  "Access-Control-Allow-Headers": "*", // Consider specifying exact headers in production
+  "Access-Control-Max-Age": "86400", // Cache preflight for 24 hours
+}
 
-export async function GET(request: NextRequest) {
+// Handle OPTIONS requests for CORS preflight
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: corsHeaders,
+  })
+}
+
+// Helper function to forward headers and body
+async function handleProxyRequest(
+  request: NextRequest,
+  method: string,
+  originalMethod?: string,
+): Promise<NextResponse> {
   try {
     // Get the target URL from the query parameter
-    const targetUrl = request.nextUrl.searchParams.get("url")
+    let targetUrl = request.nextUrl.searchParams.get("url")
     const apiKey = request.headers.get("apikey")
 
     if (!targetUrl) {
-      return NextResponse.json({ error: "Missing target URL" }, { status: 400 })
+      return NextResponse.json({ error: "Missing target URL" }, { status: 400, headers: corsHeaders })
     }
 
-    console.log(`Proxying GET request to: ${targetUrl}`)
+    if (targetUrl.includes("://localhost")) {
+      targetUrl = targetUrl.replace("://localhost", "://127.0.0.1")
+      console.log(`Replaced localhost with 127.0.0.1. New targetUrl: ${targetUrl}`)
+    }
+
+    console.log(
+      `Proxying ${method} request to: ${targetUrl}${originalMethod ? ` (original method: ${originalMethod})` : ""}`,
+    )
 
     // Prepare headers to forward
     const headers: Record<string, string> = {}
@@ -27,87 +47,147 @@ export async function GET(request: NextRequest) {
       console.log("API key provided")
     }
 
-    // Forward any other headers you might need
-    const acceptHeader = request.headers.get("accept")
-    if (acceptHeader) {
-      headers["accept"] = acceptHeader
+    // Add method override header if needed (for servers that support it)
+    if (originalMethod && originalMethod !== method) {
+      headers["X-HTTP-Method-Override"] = originalMethod
+      console.log(`Added method override header: ${originalMethod}`)
     }
 
-    // Make the request to the target URL with the custom HTTPS agent
+    // Forward common headers, you might want to be more selective or forward all incoming headers
+    const incomingHeaders = request.headers
+    incomingHeaders.forEach((value, key) => {
+      // Avoid forwarding headers that are typically set by fetch or not needed
+      if (!["host", "connection", "content-length", "transfer-encoding"].includes(key.toLowerCase())) {
+        headers[key] = value
+      }
+    })
+
+    // Get the request body for relevant methods
+    let body: string | undefined
+    if (method !== "GET" && method !== "HEAD") {
+      try {
+        body = await request.text()
+        console.log("Request body:", body.substring(0, 200) + (body.length > 200 ? "..." : "")) // Log truncated body
+      } catch (e) {
+        console.warn("Failed to read request body (might be empty):", e)
+        body = undefined // Ensure body is undefined if reading fails or is empty
+      }
+    }
+
+    // Make the request to the target URL
     const fetchOptions: RequestInit = {
-      method: "GET",
-      headers,
-      // @ts-ignore - The node fetch types don't include the agent property
-      agent: targetUrl.startsWith("https:") ? httpsAgent : undefined,
+      method: method,
+      headers: headers,
+      body: body, // Pass the body for methods that need it
+      cache: "no-store", // Ensure no caching
     }
 
-    console.log("Fetch options:", JSON.stringify(fetchOptions, null, 2))
+    console.log("Fetch options (partial):", {
+      method: fetchOptions.method,
+      headers: fetchOptions.headers,
+      body: fetchOptions.body ? "..." : null, // Avoid logging potentially large body
+      cache: fetchOptions.cache,
+    })
 
     try {
+      // Perform the actual fetch to the target URL
       const response = await fetch(targetUrl, fetchOptions)
-      
-      // Get the response data
-      const contentType = response.headers.get("content-type")
-      console.log(`Response status: ${response.status}, Content-Type: ${contentType}`)
-      
-      let data
 
-      if (contentType && contentType.includes("application/json")) {
-        data = await response.json()
-        return NextResponse.json(data, { status: response.status })
-      } else {
-        data = await response.text()
-        return new NextResponse(data, {
-          status: response.status,
-          headers: {
-            "Content-Type": contentType || "text/plain",
-          },
-        })
+      // Forward the response status and headers back to the client
+      const responseHeaders: Record<string, string> = {
+        ...corsHeaders, // Add CORS headers to all responses
       }
+
+      response.headers.forEach((value, key) => {
+        // Don't override our CORS headers with ones from the target
+        if (!key.toLowerCase().startsWith("access-control-")) {
+          responseHeaders[key] = value
+        }
+      })
+
+      // Get the response body as an ArrayBuffer for faithful forwarding
+      const responseBody = await response.arrayBuffer()
+
+      // Return the response from the proxy, preserving status and headers
+      return new NextResponse(responseBody, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: responseHeaders,
+      })
     } catch (fetchError) {
-      console.error("Fetch error in proxy:", fetchError)
+      console.error(`Workspace error proxying ${method} to ${targetUrl}:`, fetchError)
+      
+      // Provide more specific error messages based on the error type
+      let errorMessage = `Proxy fetch error: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`
+      let errorDetails = "Could not connect to the target API gateway. Check URL and network."
+      
+      // Check for certificate errors
+      if (fetchError instanceof Error) {
+        const errorString = fetchError.toString().toLowerCase()
+        if (errorString.includes("certificate") || 
+            (fetchError.cause && 
+             typeof fetchError.cause === 'object' && 
+             'code' in fetchError.cause && 
+             fetchError.cause.code === 'DEPTH_ZERO_SELF_SIGNED_CERT')) {
+          
+          errorDetails = "The API Gateway is using a self-signed certificate. This is expected in development environments. Try using Mock Mode for testing."
+        }
+      }
+      
       return NextResponse.json(
-        { 
-          error: `Proxy fetch error: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`,
-          url: targetUrl
-        }, 
-        { status: 502 }
+        {
+          error: errorMessage,
+          url: targetUrl,
+          details: errorDetails,
+        },
+        { status: 502, headers: corsHeaders }, // Bad Gateway status
       )
     }
   } catch (error) {
-    console.error("General proxy error:", error)
+    console.error(`General proxy error during ${method} handling:`, error)
     return NextResponse.json(
       { error: `Proxy error: ${error instanceof Error ? error.message : String(error)}` },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }, // Internal Server Error
     )
   }
 }
 
+// Handle GET requests
+export async function GET(request: NextRequest) {
+  return handleProxyRequest(request, "GET")
+}
+
+// Handle POST requests with method override support
 export async function POST(request: NextRequest) {
+  // Check if this is actually a method override request
+  const methodOverride = request.headers.get("X-HTTP-Method-Override")
+
+  if (methodOverride && ["PUT", "DELETE", "PATCH"].includes(methodOverride.toUpperCase())) {
+    // For problematic methods, use POST but pass the original intended method
+    return handleProxyRequest(request, "POST", methodOverride)
+  }
+
+  return handleProxyRequest(request, "POST")
+}
+
+// Handle PUT requests
+export async function PUT(request: NextRequest) {
   try {
     // Get the target URL from the query parameter
     const targetUrl = request.nextUrl.searchParams.get("url")
     const apiKey = request.headers.get("apikey")
 
     if (!targetUrl) {
-      return NextResponse.json({ error: "Missing target URL" }, { status: 400 })
+      return NextResponse.json({ error: "Missing target URL" }, { status: 400, headers: corsHeaders })
     }
 
-    console.log(`Proxying POST request to: ${targetUrl}`)
-
-    // Get the request body
-    let body: string | undefined
-    try {
-      body = await request.text()
-      console.log("Request body:", body)
-    } catch (e) {
-      console.error("Failed to read request body:", e)
-    }
+    console.log(`Proxying PUT request to: ${targetUrl}`)
 
     // Prepare headers to forward
     const headers: Record<string, string> = {}
     if (apiKey) {
       headers["apikey"] = apiKey
+      console.log("API key provided")
     }
 
     // Forward content type header
@@ -116,128 +196,85 @@ export async function POST(request: NextRequest) {
       headers["content-type"] = contentType
     }
 
-    // Make the request to the target URL with the custom HTTPS agent
-    const fetchOptions: RequestInit = {
-      method: "POST",
-      headers,
-      body,
-      // @ts-ignore - The node fetch types don't include the agent property
-      agent: targetUrl.startsWith("https:") ? httpsAgent : undefined,
+    // Forward accept header
+    const acceptHeader = request.headers.get("accept")
+    if (acceptHeader) {
+      headers["accept"] = acceptHeader
     }
 
-    try {
-      const response = await fetch(targetUrl, fetchOptions)
-      
-      // Get the response data
-      const responseContentType = response.headers.get("content-type")
-      console.log(`Response status: ${response.status}, Content-Type: ${responseContentType}`)
-      
-      let data
-
-      if (responseContentType && responseContentType.includes("application/json")) {
-        data = await response.json()
-        return NextResponse.json(data, { status: response.status })
-      } else {
-        data = await response.text()
-        return new NextResponse(data, {
-          status: response.status,
-          headers: {
-            "Content-Type": responseContentType || "text/plain",
-          },
-        })
-      }
-    } catch (fetchError) {
-      console.error("Fetch error in proxy:", fetchError)
-      return NextResponse.json(
-        { 
-          error: `Proxy fetch error: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`,
-          url: targetUrl
-        }, 
-        { status: 502 }
-      )
-    }
-  } catch (error) {
-    console.error("General proxy error:", error)
-    return NextResponse.json(
-      { error: `Proxy error: ${error instanceof Error ? error.message : String(error)}` },
-      { status: 500 }
-    )
-  }
-}
-
-// Handle PUT requests
-export async function PUT(request: NextRequest) {
-  try {
-    const targetUrl = request.nextUrl.searchParams.get("url")
-    const apiKey = request.headers.get("apikey")
-
-    if (!targetUrl) {
-      return NextResponse.json({ error: "Missing target URL" }, { status: 400 })
-    }
-
-    console.log(`Proxying PUT request to: ${targetUrl}`)
-
+    // Get the request body
     let body: string | undefined
     try {
       body = await request.text()
-      console.log("Request body:", body)
+      console.log("PUT request body:", body.substring(0, 200) + (body.length > 200 ? "..." : ""))
     } catch (e) {
-      console.error("Failed to read request body:", e)
+      console.warn("Failed to read PUT request body:", e)
     }
 
-    const headers: Record<string, string> = {}
-    if (apiKey) {
-      headers["apikey"] = apiKey
-    }
-
-    const contentType = request.headers.get("content-type")
-    if (contentType) {
-      headers["content-type"] = contentType
-    }
-
+    // Make the request to the target URL
     const fetchOptions: RequestInit = {
       method: "PUT",
       headers,
       body,
-      // @ts-ignore - The node fetch types don't include the agent property
-      agent: targetUrl.startsWith("https:") ? httpsAgent : undefined,
+      cache: "no-store",
     }
+
+    console.log("PUT fetch options:", {
+      method: fetchOptions.method,
+      headers: fetchOptions.headers,
+      bodyLength: body ? body.length : 0,
+    })
 
     try {
       const response = await fetch(targetUrl, fetchOptions)
-      
-      const responseContentType = response.headers.get("content-type")
-      console.log(`Response status: ${response.status}, Content-Type: ${responseContentType}`)
-      
-      let data
 
-      if (responseContentType && responseContentType.includes("application/json")) {
-        data = await response.json()
-        return NextResponse.json(data, { status: response.status })
+      console.log(`PUT response status: ${response.status}`)
+
+      // Forward the response status and headers back to the client
+      const responseHeaders: Record<string, string> = {
+        ...corsHeaders,
+      }
+
+      response.headers.forEach((value, key) => {
+        if (!key.toLowerCase().startsWith("access-control-")) {
+          responseHeaders[key] = value
+        }
+      })
+
+      // Get the response content
+      const contentType = response.headers.get("content-type")
+
+      if (contentType && contentType.includes("application/json")) {
+        const data = await response.json()
+        return NextResponse.json(data, {
+          status: response.status,
+          headers: responseHeaders,
+        })
       } else {
-        data = await response.text()
-        return new NextResponse(data, {
+        const text = await response.text()
+        return new NextResponse(text, {
           status: response.status,
           headers: {
-            "Content-Type": responseContentType || "text/plain",
+            ...responseHeaders,
+            "Content-Type": contentType || "text/plain",
           },
         })
       }
     } catch (fetchError) {
-      console.error("Fetch error in proxy:", fetchError)
+      console.error("PUT fetch error:", fetchError)
       return NextResponse.json(
-        { 
-          error: `Proxy fetch error: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`,
-          url: targetUrl
-        }, 
-        { status: 502 }
+        {
+          error: `PUT proxy fetch error: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`,
+          url: targetUrl,
+        },
+        { status: 502, headers: corsHeaders },
       )
     }
   } catch (error) {
-    console.error("General proxy error:", error)
+    console.error("General PUT proxy error:", error)
     return NextResponse.json(
-      { error: `Proxy error: ${error instanceof Error ? error.message : String(error)}` },
-      { status: 500 }
+      { error: `PUT proxy error: ${error instanceof Error ? error.message : String(error)}` },
+      { status: 500, headers: corsHeaders },
     )
   }
 }
@@ -245,139 +282,124 @@ export async function PUT(request: NextRequest) {
 // Handle DELETE requests
 export async function DELETE(request: NextRequest) {
   try {
+    // Get the target URL from the query parameter
     const targetUrl = request.nextUrl.searchParams.get("url")
     const apiKey = request.headers.get("apikey")
 
     if (!targetUrl) {
-      return NextResponse.json({ error: "Missing target URL" }, { status: 400 })
+      return NextResponse.json({ error: "Missing target URL" }, { status: 400, headers: corsHeaders })
     }
 
     console.log(`Proxying DELETE request to: ${targetUrl}`)
 
+    // Prepare headers to forward
     const headers: Record<string, string> = {}
     if (apiKey) {
       headers["apikey"] = apiKey
+      console.log("API key provided")
     }
 
+    // Forward accept header
+    const acceptHeader = request.headers.get("accept")
+    if (acceptHeader) {
+      headers["accept"] = acceptHeader
+    }
+
+    // Make the request to the target URL
     const fetchOptions: RequestInit = {
       method: "DELETE",
       headers,
-      // @ts-ignore - The node fetch types don't include the agent property
-      agent: targetUrl.startsWith("https:") ? httpsAgent : undefined,
+      cache: "no-store",
     }
+
+    console.log("DELETE fetch options:", {
+      method: fetchOptions.method,
+      headers: fetchOptions.headers,
+    })
 
     try {
       const response = await fetch(targetUrl, fetchOptions)
-      
+
+      console.log(`DELETE response status: ${response.status}`)
+
+      // Forward the response status and headers back to the client
+      const responseHeaders: Record<string, string> = {
+        ...corsHeaders,
+      }
+
+      response.headers.forEach((value, key) => {
+        if (!key.toLowerCase().startsWith("access-control-")) {
+          responseHeaders[key] = value
+        }
+      })
+
+      // Get the response content
       const contentType = response.headers.get("content-type")
-      console.log(`Response status: ${response.status}, Content-Type: ${contentType}`)
-      
-      let data
 
       if (contentType && contentType.includes("application/json")) {
-        data = await response.json()
-        return NextResponse.json(data, { status: response.status })
+        const data = await response.json()
+        return NextResponse.json(data, {
+          status: response.status,
+          headers: responseHeaders,
+        })
       } else {
-        data = await response.text()
-        return new NextResponse(data, {
+        const text = await response.text()
+        return new NextResponse(text, {
           status: response.status,
           headers: {
+            ...responseHeaders,
             "Content-Type": contentType || "text/plain",
           },
         })
       }
     } catch (fetchError) {
-      console.error("Fetch error in proxy:", fetchError)
+      console.error("DELETE fetch error:", fetchError)
       return NextResponse.json(
-        { 
-          error: `Proxy fetch error: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`,
-          url: targetUrl
-        }, 
-        { status: 502 }
+        {
+          error: `DELETE proxy fetch error: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`,
+          url: targetUrl,
+        },
+        { status: 502, headers: corsHeaders },
       )
     }
   } catch (error) {
-    console.error("General proxy error:", error)
+    console.error("General DELETE proxy error:", error)
     return NextResponse.json(
-      { error: `Proxy error: ${error instanceof Error ? error.message : String(error)}` },
-      { status: 500 }
+      { error: `DELETE proxy error: ${error instanceof Error ? error.message : String(error)}` },
+      { status: 500, headers: corsHeaders },
     )
   }
 }
 
-// Handle PATCH requests
+// Handle PATCH requests with fallback to POST+override
 export async function PATCH(request: NextRequest) {
   try {
-    const targetUrl = request.nextUrl.searchParams.get("url")
-    const apiKey = request.headers.get("apikey")
+    // First try direct PATCH method
+    const response = await handleProxyRequest(request, "PATCH")
 
-    if (!targetUrl) {
-      return NextResponse.json({ error: "Missing target URL" }, { status: 400 })
-    }
-
-    console.log(`Proxying PATCH request to: ${targetUrl}`)
-
-    let body: string | undefined
-    try {
-      body = await request.text()
-      console.log("Request body:", body)
-    } catch (e) {
-      console.error("Failed to read request body:", e)
-    }
-
-    const headers: Record<string, string> = {}
-    if (apiKey) {
-      headers["apikey"] = apiKey
-    }
-
-    const contentType = request.headers.get("content-type")
-    if (contentType) {
-      headers["content-type"] = contentType
-    }
-
-    const fetchOptions: RequestInit = {
-      method: "PATCH",
-      headers,
-      body,
-      // @ts-ignore - The node fetch types don't include the agent property
-      agent: targetUrl.startsWith("https:") ? httpsAgent : undefined,
-    }
-
-    try {
-      const response = await fetch(targetUrl, fetchOptions)
-      
-      const responseContentType = response.headers.get("content-type")
-      console.log(`Response status: ${response.status}, Content-Type: ${responseContentType}`)
-      
-      let data
-
-      if (responseContentType && responseContentType.includes("application/json")) {
-        data = await response.json()
-        return NextResponse.json(data, { status: response.status })
-      } else {
-        data = await response.text()
-        return new NextResponse(data, {
-          status: response.status,
-          headers: {
-            "Content-Type": responseContentType || "text/plain",
-          },
-        })
+    // If we got a CORS error or 405 Method Not Allowed, retry with POST+override
+    if (
+      response.status === 405 ||
+      (response.status === 400 && response.headers.get("content-type")?.includes("application/json"))
+    ) {
+      const responseBody = await response.json().catch(() => ({}))
+      if (
+        responseBody.error?.toLowerCase().includes("cors") ||
+        responseBody.error?.toLowerCase().includes("method") ||
+        response.status === 405
+      ) {
+        console.log("PATCH request failed, retrying with POST+override")
+        // Clone the request to read the body again
+        const clonedRequest = request.clone()
+        return handleProxyRequest(clonedRequest, "POST", "PATCH")
       }
-    } catch (fetchError) {
-      console.error("Fetch error in proxy:", fetchError)
-      return NextResponse.json(
-        { 
-          error: `Proxy fetch error: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`,
-          url: targetUrl
-        }, 
-        { status: 502 }
-      )
     }
+
+    return response
   } catch (error) {
-    console.error("General proxy error:", error)
-    return NextResponse.json(
-      { error: `Proxy error: ${error instanceof Error ? error.message : String(error)}` },
-      { status: 500 }
-    )
+    console.error("Error handling PATCH request:", error)
+    // Fall back to POST+override if there was an error
+    const clonedRequest = request.clone()
+    return handleProxyRequest(clonedRequest, "POST", "PATCH")
   }
 }

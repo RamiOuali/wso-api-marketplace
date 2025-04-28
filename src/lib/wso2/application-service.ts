@@ -1,4 +1,4 @@
-import type { WSO2AuthService } from "./auth-service"
+import { AuthService } from "../auth-service"
 
 /**
  * WSO2 Application Service
@@ -6,9 +6,9 @@ import type { WSO2AuthService } from "./auth-service"
  */
 export class WSO2ApplicationService {
   private baseUrl: string
-  private authService: WSO2AuthService
+  private authService:AuthService 
 
-  constructor(baseUrl: string, authService: WSO2AuthService) {
+  constructor(baseUrl: string, authService: AuthService) {
     this.baseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl
     this.authService = authService
   }

@@ -154,11 +154,9 @@ export interface WSO2ApiData {
   hasThumbnail?: boolean
   thumbnailUrl?: string
 }
-
-export function ApiCard({ api, index = 0 }: { api: WSO2ApiData; index?: number }) {
-  // The bug is here - we need to call useThemeContext() with parentheses
-  const context = useThemeContext()  // Fix: added () to call the hook properly
-  const theme = context?.theme || null
+export function ApiCard({ api, index = 0 }: { api: APIInfo; index?: number }) {
+  // Fixed: called useThemeContext with parentheses
+  const { theme } = useThemeContext()
 
   // Animation variants for cards
   const cardVariants = {
@@ -176,7 +174,6 @@ export function ApiCard({ api, index = 0 }: { api: WSO2ApiData; index?: number }
 
   // Provide a fallback for when theme is null
   if (!theme) {
-    // Instead of returning null, provide a basic card without theme styling
     return (
       <motion.div
         variants={cardVariants}
@@ -187,18 +184,23 @@ export function ApiCard({ api, index = 0 }: { api: WSO2ApiData; index?: number }
         <div className="border rounded-lg p-4 bg-white shadow h-full">
           <div className="flex items-start justify-between mb-4">
             <div>
-              {api.hasThumbnail && api.thumbnailUrl ? (
+              {api.hasThumbnail ? (
                 <img
-                  src={api.thumbnailUrl || "/placeholder.svg"}
+                  src={getThumbnailUrl(api)}
                   alt={`${api.name} thumbnail`}
                   className="w-12 h-12 object-contain rounded-md mb-2"
-
+                  onError={(e) => {
+                    // Fallback to initial if image fails to load
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextElementSibling.style.display = 'flex';
+                  }}
                 />
-              ) : (
-                <div className="w-12 h-12 rounded-md mb-2 flex items-center justify-center text-xl font-bold bg-orange-500 text-white">
-                  {api.name.charAt(0)}
-                </div>
-              )}
+              ) : null}
+              <div 
+                className={`w-12 h-12 rounded-md mb-2 flex items-center justify-center text-xl font-bold bg-orange-500 text-white ${api.hasThumbnail ? 'hidden' : ''}`}
+              >
+                {api.name.charAt(0)}
+              </div>
             </div>
             <div className="flex items-center">
               {api.avgRating && (
@@ -264,7 +266,7 @@ export function ApiCard({ api, index = 0 }: { api: WSO2ApiData; index?: number }
               size="sm"
               className="ml-auto"
             >
-              <a href={`/apis/${api.id}`}>
+              <a href={`/wso2/api/${api.id}`}>
                 <ExternalLink className="h-4 w-4 mr-1" />
                 View API
               </a>
@@ -314,6 +316,19 @@ export function ApiCard({ api, index = 0 }: { api: WSO2ApiData; index?: number }
     }
   }
 
+  // Get thumbnail URL from WSO2
+  const getThumbnailUrl = (api) => {
+    if (!api.hasThumbnail) return null
+    
+    // Get the base URL from localStorage if available
+    const baseUrl = typeof window !== 'undefined' 
+      ? localStorage.getItem("wso2_baseUrl") || "https://localhost:9443"
+      : "https://localhost:9443"
+      
+    // Construct the thumbnail URL from the WSO2 API
+    return `${baseUrl}/api/am/devportal/v3/apis/${api.id}/thumbnail`
+  }
+
   return (
     <motion.div
       variants={cardVariants}
@@ -324,23 +339,27 @@ export function ApiCard({ api, index = 0 }: { api: WSO2ApiData; index?: number }
       <Card className="h-full">
         <div className="flex items-start justify-between mb-4">
           <div>
-            {api.hasThumbnail && api.thumbnailUrl ? (
+            {api.hasThumbnail ? (
               <img
-                src={api.thumbnailUrl || "/placeholder.svg"}
+                src={getThumbnailUrl(api)}
                 alt={`${api.name} thumbnail`}
                 className="w-12 h-12 object-cover rounded-md mb-2"
-              />
-            ) : (
-              <div
-                className="w-12 h-12 rounded-md mb-2 flex items-center justify-center text-xl font-bold"
-                style={{
-                  backgroundColor: theme.accentColor || "#f97316",
-                  color: "#ffffff",
+                onError={(e) => {
+                  // Fallback to initial if image fails to load
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextElementSibling.style.display = 'flex';
                 }}
-              >
-                {api.name.charAt(0)}
-              </div>
-            )}
+              />
+            ) : null}
+            <div 
+              className={`w-12 h-12 rounded-md mb-2 flex items-center justify-center text-xl font-bold ${api.hasThumbnail ? 'hidden' : ''}`}
+              style={{
+                backgroundColor: theme.accentColor || "#f97316",
+                color: "#ffffff",
+              }}
+            >
+              {api.name.charAt(0)}
+            </div>
           </div>
           <div className="flex items-center">
             {api.avgRating && (
@@ -434,7 +453,7 @@ export function ApiCard({ api, index = 0 }: { api: WSO2ApiData; index?: number }
               color: theme.buttonPrimaryColor || "#0070f3",
             }}
           >
-            <a href={`/apis/${api.id}`}>
+            <a href={`/wso2/api/${api.id}`}>
               <ExternalLink className="h-4 w-4 mr-1" />
               View API
             </a>

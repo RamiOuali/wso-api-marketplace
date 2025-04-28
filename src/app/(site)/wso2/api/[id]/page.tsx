@@ -1,18 +1,19 @@
  "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ApiDetail } from "@/components/wso2/api-detail"
-import { WSO2AuthService } from "@/lib/wso2/auth-service"
 import { Loader2 } from 'lucide-react'
+import { WSO2AuthService } from "@/lib/wso2/auth-service"
 
-export default function ApiDetailPage({ params }: { params: { id: string } }) {
+export default function ApiDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   const [baseUrl, setBaseUrl] = useState<string>("")
   const [authService, setAuthService] = useState<WSO2AuthService | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
 
+  const { id } = React.use(params);
   useEffect(() => {
     try {
       // Get connection details from localStorage
@@ -72,5 +73,5 @@ export default function ApiDetailPage({ params }: { params: { id: string } }) {
     )
   }
 
-  return <ApiDetail baseUrl={baseUrl} apiId={params.id} authService={authService || undefined} />
+  return <ApiDetail baseUrl={baseUrl} apiId={id} WSO2AuthService={authService} />;
 }

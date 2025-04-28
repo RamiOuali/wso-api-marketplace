@@ -1,404 +1,431 @@
-"use client"
-import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { useThemeContext } from "@/providers/ThemeProvider"
-import {
-  LogIn,
-  Search,
-  AppWindow,
-  Bookmark,
-  Key,
-  Code,
-  Download,
-  Settings,
-  CheckCircle,
-  ChevronRight,
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useThemeContext } from "@/providers/ThemeProvider";
+import { 
+  Calendar, 
+  Code, 
+  Database, 
+  Globe, 
+  Key, 
+  Lock,
+  MessageSquare,
+  Rocket,
+  Server,
   ChevronLeft,
-  ArrowRight
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
+  ChevronRight,
+  Play,
+  Pause
+} from "lucide-react";
 
-export function ApiStepsCompact() {
-  const [activeStep, setActiveStep] = useState(1)
-
+export default function EnhancedAutoTimeline() {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [direction, setDirection] = useState(1); // 1 for forward, -1 for backward
+  const progressRef = useRef(null);
+  
   // Get theme from context
-  const context = useThemeContext()
-  const theme = context?.theme || null
+  const context = useThemeContext();
+  const theme = context?.theme || null;
 
-  // Theme variables with fallbacks
-  const primaryColor = theme?.primaryColor || "#4361ee"
-  const secondaryColor = theme?.secondaryColor || "#3a0ca3"
-  const accentColor = theme?.accentColor || "#7209b7"
-  const backgroundColor = theme?.backgroundColor || "#f8fafc"
-  const textColor = theme?.textColor || "#1e293b"
-  const fontFamily = theme?.bodyFont || "Inter, sans-serif"
-  const buttonBorderRadius = theme?.buttonBorderRadius || "0.5rem"
-  const cardBorderRadius = theme?.cardBorderRadius || "0.75rem"
-  const cardShadow = theme?.cardShadow || "0 10px 25px -5px rgba(0, 0, 0, 0.1)"
+  // Theme variables with fallbacks but using some custom values for variety
+  const primaryColor = "#6366f1"; // Custom primary
+  const secondaryColor = theme?.secondaryColor || "#3a0ca3";
+  const accentColor = "#ec4899"; // Custom accent
+  const backgroundColor = theme?.backgroundColor || "#f8fafc";
+  const textColor = theme?.textColor || "#1e293b";
+  const cardBorderRadius = theme?.cardBorderRadius || "0.75rem";
+  const cardShadow = theme?.cardShadow || "0 10px 25px -5px rgba(0, 0, 0, 0.1)";
+  const buttonBorderRadius = theme?.buttonBorderRadius || "0.5rem";
 
-  // Step content with concise descriptions
-  const steps = [
+  const timelineItems = [
     {
       id: 1,
-      title: "Sign Up",
-      description: "Create a free account in seconds",
-      icon: <LogIn className="h-5 w-5" />,
-      content: "Begin your API journey with a free developer account. Verify your email and start exploring immediately.",
-      action: "Sign Up",
-      actionLink: "/register"
+      title: "Discover",
+      subTitle: "Find the perfect API",
+      icon: <Globe size={24} />,
+      color: primaryColor,
+      description: "Browse our marketplace of hundreds of APIs across different categories and industries. Filter by functionality, pricing, and popularity to find exactly what you need.",
+      stats: [
+        { label: "APIs Available", value: "500+" },
+        { label: "Categories", value: "12" }
+      ]
     },
     {
       id: 2,
-      title: "Browse APIs",
-      description: "Explore our API catalog",
-      icon: <Search className="h-5 w-5" />,
-      content: "Discover hundreds of APIs across payments, AI, communications, and more. Each with comprehensive documentation.",
-      action: "View APIs",
-      actionLink: "/marketplace"
+      title: "Connect",
+      subTitle: "Secure authentication",
+      icon: <Key size={24} />,
+      color: secondaryColor,
+      description: "Generate API keys and set up secure authentication for your applications. Our dashboard makes managing keys and permissions straightforward and secure.",
+      stats: [
+        { label: "Auth Methods", value: "4" },
+        { label: "Setup Time", value: "< 5 min" }
+      ]
     },
     {
       id: 3,
-      title: "Register App",
-      description: "Create your application",
-      icon: <AppWindow className="h-5 w-5" />,
-      content: "Register your application to establish a secure identity and manage multiple projects from a single dashboard.",
-      action: "Create App",
-      actionLink: "/apps/new"
+      title: "Test",
+      subTitle: "Try before you integrate",
+      icon: <Code size={24} />,
+      color: accentColor,
+      description: "Use our interactive console to test API calls before implementing them. Visualize responses and understand data structure before writing any code.",
+      stats: [
+        { label: "Test Environments", value: "3" },
+        { label: "Response Time", value: "Fast" }
+      ]
     },
     {
       id: 4,
-      title: "Subscribe",
-      description: "Choose your plan",
-      icon: <Bookmark className="h-5 w-5" />,
-      content: "Subscribe to APIs with a free tier for development and transparent pricing for production based on your needs.",
-      action: "Subscribe",
-      actionLink: "/pricing"
+      title: "Integrate",
+      subTitle: "Seamless implementation",
+      icon: <Server size={24} />,
+      color: "#10b981", // Success green
+      description: "Add our APIs to your application with SDKs for all major programming languages. Copy-paste code snippets get you up and running in minutes, not hours.",
+      stats: [
+        { label: "SDK Languages", value: "8" },
+        { label: "Documentation", value: "Complete" }
+      ]
     },
     {
       id: 5,
-      title: "Get Keys",
-      description: "Secure API access",
-      icon: <Key className="h-5 w-5" />,
-      content: "Generate API keys for authentication with separate test and production environments and easy rotation options.",
-      action: "Get Keys",
-      actionLink: "/dashboard/keys"
+      title: "Monitor",
+      subTitle: "Track performance",
+      icon: <Database size={24} />,
+      color: theme?.warningColor || "#f59e0b",
+      description: "Keep track of your API usage, performance metrics and error rates. Set up alerts and notifications to stay informed about your integration health.",
+      stats: [
+        { label: "Metrics Tracked", value: "15+" },
+        { label: "Update Frequency", value: "Real-time" }
+      ]
     },
     {
       id: 6,
-      title: "Test APIs",
-      description: "Try before you code",
-      icon: <Code className="h-5 w-5" />,
-      content: "Test API calls in our interactive playground to validate parameters and understand responses in real-time.",
-      action: "Try APIs",
-      actionLink: "/playground"
-    },
-    {
-      id: 7,
-      title: "Integrate",
-      description: "Implement in your app",
-      icon: <Download className="h-5 w-5" />,
-      content: "Add APIs to your app using our SDKs for JavaScript, Python, Ruby, PHP, and more with ready-to-use code snippets.",
-      action: "Get SDKs",
-      actionLink: "/docs/sdks"
-    },
-    {
-      id: 8,
-      title: "Monitor",
-      description: "Track usage and performance",
-      icon: <Settings className="h-5 w-5" />,
-      content: "Access real-time analytics for API usage, response times, error rates, and costs with customizable alerts.",
-      action: "View Stats",
-      actionLink: "/dashboard"
+      title: "Scale",
+      subTitle: "Grow without limits",
+      icon: <Rocket size={24} />,
+      color: theme?.errorColor || "#ef4444",
+      description: "Our APIs are built to handle millions of requests as your business grows. Flexible pricing tiers ensure you only pay for what you need at each stage.",
+      stats: [
+        { label: "Uptime", value: "99.99%" },
+        { label: "Rate Limits", value: "Customizable" }
+      ]
     }
-  ]
+  ];
+
+  // Handle auto-progression with smooth animation
+  useEffect(() => {
+    if (isPaused) return;
+    
+    const interval = setInterval(() => {
+      setDirection(1);
+      setActiveIndex((prevIndex) => (prevIndex + 1) % timelineItems.length);
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [isPaused, timelineItems.length]);
+
+  // Handle manual navigation
+  const navigate = (newIndex) => {
+    setDirection(newIndex > activeIndex ? 1 : -1);
+    setActiveIndex(newIndex);
+    setIsPaused(true);
+  };
+
+  const goNext = () => {
+    setDirection(1);
+    setActiveIndex((prevIndex) => (prevIndex + 1) % timelineItems.length);
+    setIsPaused(true);
+  };
+
+  const goPrev = () => {
+    setDirection(-1);
+    setActiveIndex((prevIndex) => (prevIndex - 1 + timelineItems.length) % timelineItems.length);
+    setIsPaused(true);
+  };
+
+  // Animation variants
+  const contentVariants = {
+    initial: (direction) => ({
+      opacity: 0,
+      x: direction > 0 ? 40 : -40
+    }),
+    animate: {
+      opacity: 1,
+      x: 0,
+      transition: {
+        duration: 0.4,
+        ease: "easeOut"
+      }
+    },
+    exit: (direction) => ({
+      opacity: 0,
+      x: direction > 0 ? -40 : 40,
+      transition: {
+        duration: 0.3,
+        ease: "easeIn"
+      }
+    })
+  };
 
   return (
-    <section
-      className="py-12 px-4 w-full"
-      style={{
+    <div 
+      className="w-full p-8 rounded-xl shadow-lg"
+      style={{ 
         backgroundColor: backgroundColor,
         color: textColor,
-        fontFamily: fontFamily
+        borderRadius: cardBorderRadius,
+        boxShadow: cardShadow
       }}
     >
-      <div className="max-w-6xl mx-auto">
-        {/* Section Header */}
-        <div className="text-center mb-10">
-          <h2
-            className="text-3xl font-bold mb-3"
-            style={{ color: primaryColor }}
-          >
-            Start Building in Minutes
-          </h2>
-          <p className="text-base max-w-2xl mx-auto opacity-80">
-            Follow these eight simple steps to integrate our APIs into your applications
-          </p>
-        </div>
+      <div className="max-w-5xl mx-auto">
+        <h2 
+       
+                      className="text-4xl text-center mb-2 font-extrabold tracking-tight"
+            style={{ color: theme.textColor || "#111", fontFamily: theme.headingFont || "Inter, sans-serif" }} >
+          Your API Journey
+        </h2>
+        <p className="text-center mb-12 opacity-80">
+          Follow these steps to leverage our powerful API ecosystem
+        </p>
 
-        {/* Step Indicators */}
-        <div className="flex justify-center mb-8 overflow-x-auto py-2 hide-scrollbar">
-          <div className="flex space-x-1">
-            {steps.map((step) => (
+        {/* Enhanced Timeline Path */}
+        <div className="relative h-4 mb-16">
+          {/* Timeline Track */}
+          <div className="absolute top-1/2 left-0 w-full h-1 -translate-y-1/2 bg-slate-200 rounded-full"></div>
+          
+          {/* Animated Progress */}
+          <motion.div 
+            className="absolute top-1/2 left-0 h-1 -translate-y-1/2 rounded-full"
+            style={{ 
+              background: `linear-gradient(to right, ${primaryColor}, ${accentColor})`,
+              originX: 0
+            }}
+            initial={false}
+            animate={{ 
+              width: `${(activeIndex / (timelineItems.length - 1)) * 100}%` 
+            }}
+            transition={{ 
+              duration: 0.5,
+              ease: "easeInOut"
+            }}
+            ref={progressRef}
+          />
+          
+          {/* Timeline Points */}
+          <div className="absolute top-1/2 left-0 w-full h-1 -translate-y-1/2 flex justify-between">
+            {timelineItems.map((item, index) => (
               <button
-                key={step.id}
-                onClick={() => setActiveStep(step.id)}
-                className="transition-all duration-300 px-1"
+                key={index}
+                onClick={() => navigate(index)}
+                className="relative group"
               >
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300"
-                  style={{
-                    backgroundColor: step.id === activeStep ? primaryColor : step.id < activeStep ? `${primaryColor}30` : `${primaryColor}15`,
-                    transform: step.id === activeStep ? 'scale(1.2)' : 'scale(1)',
-                    boxShadow: step.id === activeStep ? `0 0 0 3px ${primaryColor}20` : 'none'
+                <motion.div
+                  className="w-6 h-6 rounded-full flex items-center justify-center -ml-3 cursor-pointer"
+                  style={{ 
+                    backgroundColor: index <= activeIndex ? item.color : "#e2e8f0",
+                    boxShadow: `0 0 0 2px white, 0 0 ${index === activeIndex ? '8px 2px' : '0 0px'} ${item.color}80`,
+                  }}
+                  animate={{
+                    scale: index === activeIndex ? 1.3 : 1
+                  }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 400,
+                    damping: 15
                   }}
                 >
-                  {step.id <= activeStep ? (
-                    <div className="text-white">
-                      {step.id === activeStep ? step.icon : <CheckCircle className="h-4 w-4" />}
-                    </div>
-                  ) : (
-                    <span
-                      className="text-xs font-medium"
-                      style={{ color: `${primaryColor}90` }}
-                    >
-                      {step.id}
-                    </span>
+                  {index === activeIndex && (
+                    <motion.div 
+                      className="absolute w-3 h-3 rounded-full bg-white"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 0.1 }}
+                    />
                   )}
-                </div>
+                </motion.div>
+                
+                {/* Label above point */}
+                <motion.div
+                  className="absolute bottom-full -mb-1 left-1/2 -translate-x-1/2 whitespace-nowrap"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ 
+                    opacity: index === activeIndex ? 1 : index <= activeIndex ? 0.7 : 0.4,
+                    y: index === activeIndex ? 0 : 5
+                  }}
+                >
+                  <div 
+                    className={`text-xs font-medium mb-3 py-1 px-2 rounded-md ${index === activeIndex ? 'text-white' : 'text-slate-700 bg-white/70'}`}
+                    style={{ 
+                      fontFamily: theme?.bodyFont,
+                      backgroundColor: index === activeIndex ? item.color : undefined,
+                      boxShadow: index === activeIndex ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none'
+                    }}
+                  >
+                    {item.title}
+                  </div>
+                </motion.div>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Current Step Content */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeStep}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-            style={{
-              backgroundColor: '#ffffff',
-              boxShadow: cardShadow,
-              borderRadius: cardBorderRadius,
-              border: `1px solid ${primaryColor}10`
-            }}
-          >
-            <div className="flex flex-col md:flex-row">
-              {/* Step List (Left Side) */}
-              <div className="md:w-1/3 border-r" style={{ borderColor: `${primaryColor}10` }}>
-                <div className="p-4">
-                  <h3
-                    className="text-sm font-medium mb-3 uppercase tracking-wider"
-                    style={{ color: `${primaryColor}70` }}
-                  >
-                    Your Progress
-                  </h3>
-
-                  <div className="space-y-1">
-                    {steps.map((step) => (
-                      <button
-                        key={step.id}
-                        onClick={() => setActiveStep(step.id)}
-                        className="w-full text-left p-2 transition-all duration-200 flex items-center rounded"
-                        style={{
-                          backgroundColor: activeStep === step.id ? `${primaryColor}10` : 'transparent',
-                        }}
-                      >
-                        <div
-                          className="w-6 h-6 rounded-full flex items-center justify-center mr-3 flex-shrink-0"
-                          style={{
-                            backgroundColor: step.id <= activeStep ? primaryColor : `${primaryColor}15`,
-                            color: step.id <= activeStep ? '#ffffff' : `${primaryColor}90`
-                          }}
-                        >
-                          {step.id <= activeStep ? (
-                            <CheckCircle className="h-3.5 w-3.5" />
-                          ) : (
-                            <span className="text-xs">{step.id}</span>
-                          )}
-                        </div>
-
-                        <div className="flex-1 truncate">
-                          <p
-                            className="font-medium text-sm"
-                            style={{
-                              color: activeStep === step.id ? primaryColor : textColor,
-                              opacity: step.id <= activeStep ? 1 : 0.6
-                            }}
-                          >
-                            {step.title}
-                          </p>
-                        </div>
-
-                        {activeStep === step.id && (
-                          <ChevronRight
-                            className="h-4 w-4 ml-2 flex-shrink-0"
-                            style={{ color: primaryColor }}
-                          />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Step Content (Right Side) */}
-              <div className="md:w-2/3">
-                <div className="p-6">
-                  <div className="flex items-center mb-4">
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center mr-3"
-                      style={{
-                        background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})`,
-                        color: '#ffffff'
-                      }}
-                    >
-                      {steps[activeStep - 1].icon}
-                    </div>
-                    <div>
-                      <p
-                        className="text-xs font-medium"
-                        style={{ color: `${primaryColor}90` }}
-                      >
-                        STEP {activeStep} OF {steps.length}
-                      </p>
-                      <h3
-                        className="text-xl font-bold"
-                        style={{ color: primaryColor }}
-                      >
-                        {steps[activeStep - 1].title}
-                      </h3>
-                    </div>
-                  </div>
-
-                  <p className="text-base mb-5">
-                    {steps[activeStep - 1].description}
-                  </p>
-
-                  <div
-                    className="p-4 rounded-lg mb-5 text-base"
-                    style={{
-                      backgroundColor: `${primaryColor}08`,
-                      borderLeft: `3px solid ${primaryColor}`
-                    }}
-                  >
-                    {steps[activeStep - 1].content}
-                  </div>
-
-                  <div className="flex items-center justify-between pt-3 mt-5 border-t" style={{ borderColor: `${primaryColor}15` }}>
-                    <Button
-                      variant="ghost"
-                      onClick={() => setActiveStep(prev => Math.max(1, prev - 1))}
-                      disabled={activeStep === 1}
-                      className="text-sm"
-                      style={{
-                        color: primaryColor,
-                        opacity: activeStep === 1 ? 0.5 : 1
-                      }}
-                    >
-                      <ChevronLeft className="mr-1 h-4 w-4" />
-                      Previous
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      className="text-sm"
-                      style={{
-                        backgroundColor: primaryColor,
-                        color: "#ffffff",
-                        borderRadius: buttonBorderRadius
-                      }}
-                    >
-                      {steps[activeStep - 1].action}
-                      <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      onClick={() => setActiveStep(prev => Math.min(steps.length, prev + 1))}
-                      disabled={activeStep === steps.length}
-                      className="text-sm"
-                      style={{
-                        color: primaryColor,
-                        opacity: activeStep === steps.length ? 0.5 : 1
-                      }}
-                    >
-                      Next
-                      <ChevronRight className="ml-1 h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </AnimatePresence>
-
-        {/* Timeline Journey - Simplified and More Compact */}
-        <div className="mt-12">
-          <div className="flex flex-wrap gap-2 justify-center">
-            {steps.map((step) => (
-              <div
-                key={step.id}
-                className="flex items-center p-2 rounded-lg transition-all duration-200 hover:scale-105"
-                style={{
-                  backgroundColor: step.id <= activeStep ? '#ffffff' : `${primaryColor}05`,
-                  border: `1px solid ${step.id <= activeStep ? primaryColor : 'transparent'}20`,
-                  boxShadow: step.id <= activeStep ? '0 2px 8px rgba(0,0,0,0.05)' : 'none',
-                  opacity: step.id <= activeStep ? 1 : 0.7,
-                  borderRadius: cardBorderRadius
-                }}
-                onClick={() => setActiveStep(step.id)}
-              >
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center mr-2"
-                  style={{
-                    backgroundColor: step.id <= activeStep ? `${primaryColor}15` : `${primaryColor}05`,
-                    color: step.id <= activeStep ? primaryColor : `${primaryColor}40`
-                  }}
-                >
-                  {step.icon}
-                </div>
-                <span
-                  className="text-sm font-medium"
-                  style={{
-                    color: step.id <= activeStep ? primaryColor : textColor,
-                    opacity: step.id <= activeStep ? 1 : 0.6
-                  }}
-                >
-                  {step.title}
-                </span>
-
-                {step.id !== steps.length && (
-                  <ChevronRight
-                    className="h-4 w-4 mx-1"
-                    style={{
-                      color: step.id < activeStep ? primaryColor : `${primaryColor}30`
-                    }}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Simple CTA */}
-          <div className="text-center mt-10">
-            <Button
-              className="text-sm"
-              style={{
-                backgroundColor: primaryColor,
-                color: "#ffffff",
-                borderRadius: buttonBorderRadius
+        {/* Content Area */}
+        <div className="relative overflow-hidden">
+          <AnimatePresence custom={direction} initial={false} mode="wait">
+            <motion.div
+              key={activeIndex}
+              custom={direction}
+              variants={contentVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="bg-white rounded-xl shadow-lg overflow-hidden"
+              style={{ 
+                borderRadius: cardBorderRadius,
+                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)"
               }}
             >
-              Get Started Now
-              <ArrowRight className="ml-1 h-3.5 w-3.5" />
-            </Button>
-          </div>
+              <div className="flex flex-col md:flex-row">
+                {/* Left Section with Background */}
+                <div 
+                  className="md:w-1/3 p-8 text-white flex flex-col justify-between relative overflow-hidden"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${timelineItems[activeIndex].color}, ${timelineItems[activeIndex].color}dd)`
+                  }}
+                >
+                  {/* Decorative Circles */}
+                  <div className="absolute -top-10 -left-10 w-40 h-40 rounded-full bg-white/10 z-0" />
+                  <div className="absolute -bottom-20 -right-10 w-60 h-60 rounded-full bg-white/5 z-0" />
+                  
+                  <div className="relative z-10">
+                    <motion.div 
+                      className="bg-white/20 w-16 h-16 rounded-xl flex items-center justify-center mb-6"
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      {timelineItems[activeIndex].icon}
+                    </motion.div>
+                    
+                    <motion.h3 
+                      className="text-3xl font-bold mb-2"
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ delay: 0.3 }}
+                    >
+                      {timelineItems[activeIndex].title}
+                    </motion.h3>
+                    
+                    <motion.p 
+                      className="opacity-90 font-light text-lg"
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ delay: 0.4 }}
+                    >
+                      {timelineItems[activeIndex].subTitle}
+                    </motion.p>
+                  </div>
+                  
+                  <motion.div 
+                    className="text-white/80 text-sm mt-8 flex items-center relative z-10"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    <div className="flex space-x-1">
+                      {timelineItems.map((_, idx) => (
+                        <div 
+                          key={idx} 
+                          className="w-1.5 h-1.5 rounded-full" 
+                          style={{ 
+                            backgroundColor: idx === activeIndex ? 'white' : 'rgba(255,255,255,0.4)'
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <div className="ml-3">
+                      Step {activeIndex + 1} of {timelineItems.length}
+                    </div>
+                  </motion.div>
+                </div>
+                
+                {/* Right Section - Content */}
+                <div className="md:w-2/3 p-8">
+                  <motion.p 
+                    className="text-slate-700 mb-8 text-lg leading-relaxed"
+                    initial={{ y: 15, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    {timelineItems[activeIndex].description}
+                  </motion.p>
+                  
+                  <motion.div 
+                    className="grid grid-cols-2 gap-4 mb-8"
+                    initial={{ y: 15, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    {timelineItems[activeIndex].stats.map((stat, index) => (
+                      <div 
+                        key={index} 
+                        className="bg-slate-50 p-4 rounded-lg border border-slate-100"
+                        style={{ borderRadius: buttonBorderRadius }}
+                      >
+                        <p className="text-sm text-slate-500">{stat.label}</p>
+                        <p 
+                          className="text-xl font-bold" 
+                          style={{ color: timelineItems[activeIndex].color }}
+                        >
+                          {stat.value}
+                        </p>
+                      </div>
+                    ))}
+                  </motion.div>
+                  
+                  <motion.div 
+                    className="mt-8 flex justify-between items-center pt-4 border-t border-slate-100"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    <button
+                      onClick={goPrev}
+                      className="text-slate-600 hover:text-slate-900 flex items-center transition-colors font-medium"
+                      style={{ borderRadius: buttonBorderRadius }}
+                    >
+                      <ChevronLeft className="mr-1 h-5 w-5" />
+                      Previous
+                    </button>
+                    
+                    <button
+                      onClick={() => setIsPaused(!isPaused)}
+                      className="flex items-center justify-center h-10 w-10 rounded-full transition-all"
+                      style={{ 
+                        backgroundColor: isPaused ? primaryColor : 'rgba(0,0,0,0.05)',
+                        color: isPaused ? 'white' : timelineItems[activeIndex].color,
+                        borderRadius: '50%'
+                      }}
+                    >
+                      {isPaused ? <Play size={18} /> : <Pause size={18} />}
+                    </button>
+                    
+                    <button
+                      onClick={goNext}
+                      className="text-slate-600 hover:text-slate-900 flex items-center transition-colors font-medium"
+                      style={{ borderRadius: buttonBorderRadius }}
+                    >
+                      Next
+                      <ChevronRight className="ml-1 h-5 w-5" />
+                    </button>
+                  </motion.div>
+                </div>
+              </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
-      </div>
-    </section>
-  )
+        
+             </div>
+    </div>
+  );
 }

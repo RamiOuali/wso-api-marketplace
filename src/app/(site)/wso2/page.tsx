@@ -1,295 +1,185 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect, useCallback } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Loader2 } from "lucide-react"
+import { Loader2, LogIn, RefreshCw } from "lucide-react"
 import { WSO2AuthService } from "@/lib/wso2/auth-service"
+import { useThemeContext } from "@/providers/ThemeProvider"
 
 export default function WSO2Page() {
-  const router = useRouter()
-  const [baseUrl, setBaseUrl] = useState<string>("")
-  const [username, setUsername] = useState<string>("")
-  const [password, setPassword] = useState<string>("")
+  const { theme } = useThemeContext()
   const [isConnected, setIsConnected] = useState<boolean>(false)
   const [isPublicMode, setIsPublicMode] = useState<boolean>(false)
-  const [isLoading, setIsLoading] = useState<boolean>(false)
-  const [error, setError] = useState<string | null>(null)
+  const [username, setUsername] = useState<string>("")
   const [authService, setAuthService] = useState<WSO2AuthService | null>(null)
-  const [activeTab, setActiveTab] = useState<string>("connect")
   const [initialized, setInitialized] = useState<boolean>(false)
+  const [isLoading, setIsLoading] = useState<boolean>(true)
 
-  useEffect(() => {
-    // Check if we have stored connection details
+  // Always use localhost:9443 as the base URL
+  const baseUrl = "https://localhost:9443"
+
+  // Function to initialize the auth service from localStorage
+  const initializeAuthService = useCallback(() => {
+    setIsLoading(true)
     try {
-      const storedBaseUrl = localStorage.getItem("wso2_baseUrl")
       const storedUsername = localStorage.getItem("wso2_username")
       const accessToken = localStorage.getItem("wso2_accessToken")
+      const publicMode = localStorage.getItem("wso2_publicMode") === "true"
 
-      if (storedBaseUrl) {
-        setBaseUrl(storedBaseUrl)
+      if (storedUsername && accessToken) {
+        setUsername(storedUsername)
+        setIsConnected(true)
 
-        if (storedUsername && accessToken) {
-          setUsername(storedUsername)
-          setIsConnected(true)
+        // Create auth service with stored credentials
+        const auth = new WSO2AuthService(baseUrl)
 
-          // Create auth service with stored credentials
-          const auth = new WSO2AuthService(storedBaseUrl)
+        // Set auth service properties
+        const clientId = localStorage.getItem("wso2_clientId")
+        const clientSecret = localStorage.getItem("wso2_clientSecret")
+        const refreshToken = localStorage.getItem("wso2_refreshToken")
+        const tokenExpiry = localStorage.getItem("wso2_tokenExpiry")
 
-          // Set auth service properties
-          const clientId = localStorage.getItem("wso2_clientId")
-          const clientSecret = localStorage.getItem("wso2_clientSecret")
-          const refreshToken = localStorage.getItem("wso2_refreshToken")
-          const tokenExpiry = localStorage.getItem("wso2_tokenExpiry")
+        if (clientId && clientSecret && accessToken && refreshToken && tokenExpiry) {
+          Object.assign(auth, {
+            clientId,
+            clientSecret,
+            accessToken,
+            refreshToken,
+            tokenExpiry: Number.parseInt(tokenExpiry, 10),
+          })
 
-          if (clientId && clientSecret && accessToken && refreshToken && tokenExpiry) {
-            Object.assign(auth, {
-              clientId,
-              clientSecret,
-              accessToken,
-              refreshToken,
-              tokenExpiry: Number.parseInt(tokenExpiry, 10),
-            })
-
-            setAuthService(auth)
-          }
-        } else if (localStorage.getItem("wso2_publicMode") === "true") {
-          setIsPublicMode(true)
-          setIsConnected(true)
+          setAuthService(auth)
         }
+      } else if (publicMode) {
+        setIsPublicMode(true)
+        setIsConnected(true)
+
+        // Create auth service for public mode
+        const auth = new WSO2AuthService(baseUrl)
+        setAuthService(auth)
+      } else {
+        setIsConnected(false)
+        setAuthService(null)
       }
     } catch (err) {
       console.error("Error accessing localStorage:", err)
+      setIsConnected(false)
+      setAuthService(null)
     } finally {
       setInitialized(true)
-    }
-  }, [])
-
-  const handleConnect = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    // Validate inputs
-    if (!baseUrl) {
-      setError("Please enter the API Manager URL")
-      return
-    }
-
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      // Store base URL
-      localStorage.setItem("wso2_baseUrl", baseUrl)
-
-      if (!isPublicMode) {
-        // If authenticating, require username and password
-        if (!username || !password) {
-          setError("Please fill in all fields")
-          setIsLoading(false)
-          return
-        }
-
-        // Store username
-        localStorage.setItem("wso2_username", username)
-
-        // Create auth service
-        const auth = new WSO2AuthService(baseUrl)
-
-        try {
-          // Register client
-          const { clientId, clientSecret } = await auth.registerClient(username, password)
-
-          // Store client credentials
-          localStorage.setItem("wso2_clientId", clientId)
-          localStorage.setItem("wso2_clientSecret", clientSecret)
-
-          // Get access token
-          const accessToken = await auth.getAccessTokenWithPasswordGrant(username, password)
-
-          // Store token details
-          localStorage.setItem("wso2_accessToken", auth.accessToken || "")
-          localStorage.setItem("wso2_refreshToken", auth.refreshToken || "")
-          localStorage.setItem("wso2_tokenExpiry", auth.tokenExpiry.toString())
-
-          setAuthService(auth)
-        } catch (authErr) {
-          console.error("Authentication error:", authErr)
-          if (authErr instanceof TypeError && authErr.message.includes("NetworkError")) {
-            setError(
-              "Network error: Unable to connect to the WSO2 API Manager. This may be due to CORS restrictions or the server being unavailable.",
-            )
-          } else {
-            setError(`Authentication failed: ${authErr.message}`)
-          }
-          setIsLoading(false)
-          return
-        }
-      } else {
-        // Public mode
-        localStorage.setItem("wso2_publicMode", "true")
-      }
-
-      // Connect to WSO2 API Manager
-      setIsConnected(true)
-    } catch (err) {
-      console.error("Connection error:", err)
-      setError("Failed to connect to WSO2 API Manager. Please check the URL and try again.")
-    } finally {
       setIsLoading(false)
     }
-  }
+  }, [baseUrl])
 
-  const handleBrowsePublic = () => {
-    if (!baseUrl) {
-      setError("Please enter the API Manager URL")
-      return
+  useEffect(() => {
+    // Initial load
+    initializeAuthService()
+
+    // Set up event listener for auth changes
+    const handleAuthChange = () => {
+      initializeAuthService()
     }
 
-    setIsPublicMode(true)
-    localStorage.setItem("wso2_baseUrl", baseUrl)
-    localStorage.setItem("wso2_publicMode", "true")
-    setIsConnected(true)
-  }
+    // Listen for authentication events
+    document.addEventListener("wso2AuthStatusChanged", handleAuthChange)
 
-  const handleLogout = () => {
-    // Clear auth-related localStorage items
-    localStorage.removeItem("wso2_username")
-    localStorage.removeItem("wso2_clientId")
-    localStorage.removeItem("wso2_clientSecret")
-    localStorage.removeItem("wso2_accessToken")
-    localStorage.removeItem("wso2_refreshToken")
-    localStorage.removeItem("wso2_tokenExpiry")
-    localStorage.removeItem("wso2_publicMode")
+    // Clean up
+    return () => {
+      document.removeEventListener("wso2AuthStatusChanged", handleAuthChange)
+    }
+  }, [initializeAuthService])
 
-    // Reset state
-    setIsConnected(false)
-    setIsPublicMode(false)
-    setAuthService(null)
-    setPassword("")
+  // Handle manual refresh
+  const handleRefresh = () => {
+    initializeAuthService()
   }
 
   // Show loading state until we've checked localStorage
-  if (!initialized) {
+  if (isLoading && !initialized) {
     return (
       <div className="container mx-auto py-8 flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: theme?.primaryColor || "#0070f3" }} />
       </div>
     )
+  }
+
+  const buttonStyle = {
+    backgroundColor: theme?.buttonPrimaryColor || "#0070f3",
+    color: theme?.buttonTextColor || "#ffffff",
+    borderRadius: theme?.buttonBorderRadius || "0.375rem",
+    padding: theme?.buttonPadding || "0.5rem 1rem",
+  }
+
+  const cardStyle = {
+    backgroundColor: theme?.cardBackground || "#ffffff",
+    borderColor: theme?.cardBorderColor || "#e5e7eb",
+    borderRadius: theme?.cardBorderRadius || "0.5rem",
+    boxShadow: theme?.cardShadow || "0 2px 4px rgba(0,0,0,0.1)",
   }
 
   return (
     <div className="container mx-auto py-8">
       {!isConnected ? (
         <div className="max-w-md mx-auto">
-          <Card>
+          <Card style={cardStyle}>
             <CardHeader>
-              <CardTitle>Connect to WSO2 API Manager</CardTitle>
-              <CardDescription>
-                Enter your WSO2 API Manager URL to browse APIs or login with your credentials for full access
-              </CardDescription>
+              <CardTitle style={{ color: theme?.headingColor || theme?.textColor || "#333333" }}>
+                WSO2 API Console
+              </CardTitle>
             </CardHeader>
-            <form onSubmit={handleConnect}>
-              <CardContent className="space-y-4">
-                {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
-
-                <div className="space-y-2">
-                  <Label htmlFor="baseUrl">API Manager URL</Label>
-                  <Input
-                    id="baseUrl"
-                    placeholder="https://localhost:9443"
-                    value={baseUrl}
-                    onChange={(e) => setBaseUrl(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="connect">With Credentials</TabsTrigger>
-                    <TabsTrigger value="public">Public Access</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="connect" className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="username">Username</Label>
-                      <Input
-                        id="username"
-                        placeholder="username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="public">
-                    <div className="py-4">
-                      <p className="text-sm text-gray-500 mb-2">
-                        Browse public APIs without authentication. Some features will be limited.
-                      </p>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-              <CardFooter className="flex flex-col gap-3">
-                {activeTab === "connect" ? (
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Connecting...
-                      </>
-                    ) : (
-                      "Connect with Credentials"
-                    )}
-                  </Button>
-                ) : (
-                  <Button type="button" className="w-full" onClick={handleBrowsePublic} disabled={isLoading}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Connecting...
-                      </>
-                    ) : (
-                      "Browse Public APIs"
-                    )}
-                  </Button>
-                )}
-              </CardFooter>
-            </form>
+            <CardContent className="space-y-4 text-center" style={{ color: theme?.textColor || "#333333" }}>
+              <p>You need to sign in to access the WSO2 API Console.</p>
+              <p className="text-sm" style={{ color: theme?.textColor ? `${theme.textColor}88` : "#66666688" }}>
+                Please use the Sign In button to authenticate with WSO2 API Manager.
+              </p>
+              <Button
+                onClick={() => {
+                  // This will trigger the auth modal from navbar
+                  const event = new CustomEvent("openWso2AuthModal")
+                  document.dispatchEvent(event)
+                }}
+                style={buttonStyle}
+              >
+                <LogIn className="mr-2 h-4 w-4" />
+                Sign In
+              </Button>
+            </CardContent>
           </Card>
         </div>
       ) : (
         <div>
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h1 className="text-3xl font-bold">WSO2 API Manager</h1>
-              <p className="text-gray-500">{isPublicMode ? "Browsing public APIs" : `Connected as ${username}`}</p>
+              <h1
+                className="text-3xl font-bold"
+                style={{
+                  color: theme?.headingColor || theme?.textColor || "#333333",
+                  fontFamily: theme?.headingFont || theme?.bodyFont || "Inter, sans-serif"
+                }}
+              >
+                WSO2 API Manager
+              </h1>
+              <p style={{ color: theme?.textColor ? `${theme.textColor}88` : "#66666688" }}>
+                {isPublicMode ? "Browsing public APIs" : `Connected as ${username}`}
+              </p>
             </div>
-            <Button variant="outline" onClick={handleLogout}>
-              Disconnect
+            <Button
+              onClick={handleRefresh}
+              variant="outline"
+              style={{
+                borderColor: theme?.buttonSecondaryColor || "#6c757d",
+                color: theme?.buttonSecondaryColor || "#6c757d",
+                borderRadius: theme?.buttonBorderRadius || "0.375rem",
+              }}
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
             </Button>
           </div>
 
-          {/* Dynamically import the API list component to avoid server-side rendering issues */}
-          {initialized && <WSO2ApiListWrapper baseUrl={baseUrl} authService={authService} />}
+          {/* API List Component */}
+          {initialized && <WSO2ApiListWrapper baseUrl={baseUrl} authService={authService} theme={theme} />}
         </div>
       )}
     </div>
@@ -297,23 +187,33 @@ export default function WSO2Page() {
 }
 
 // Separate component to handle the dynamic import of WSO2ApiList
-function WSO2ApiListWrapper({ baseUrl, authService }: { baseUrl: string; authService: WSO2AuthService | null }) {
+function WSO2ApiListWrapper({ baseUrl, authService, theme }: {
+  baseUrl: string;
+  authService: WSO2AuthService | null;
+  theme: any;
+}) {
   const [ApiList, setApiList] = useState<React.ComponentType<any> | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     // Dynamically import the component only on the client side
+    setIsLoading(true)
     import("@/components/wso2/api-list").then((module) => {
       setApiList(() => module.WSO2ApiList)
+      setIsLoading(false)
+    }).catch(err => {
+      console.error("Failed to load API list component:", err)
+      setIsLoading(false)
     })
   }, [])
 
-  if (!ApiList) {
+  if (isLoading || !ApiList) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: theme?.primaryColor || "#0070f3" }} />
       </div>
     )
   }
 
-  return <ApiList baseUrl={baseUrl} authService={authService} />
+  return <ApiList baseUrl={baseUrl} authService={authService} theme={theme} />
 }
