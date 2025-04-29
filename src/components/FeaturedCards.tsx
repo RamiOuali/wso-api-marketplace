@@ -4,10 +4,11 @@ import { useState, useEffect } from "react"
 import { useThemeContext } from "@/providers/ThemeProvider"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { ChevronRight, Loader2 } from "lucide-react"
+import { ChevronRight, Loader2, Star, Users, ArrowRight, Code, Shield } from "lucide-react"
 import { WSO2DevPortalService } from "@/lib/wso2/api-service"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useRouter } from "next/navigation"
+import { Badge } from "@/components/ui/badge"
 import type { APIInfo } from "@/lib/wso2/types"
 
 export function FeaturedAPIs() {
@@ -152,36 +153,76 @@ export function FeaturedAPIs() {
 
   return (
     <section
-      className="py-16"
+      className="py-20"
       style={{
         backgroundColor: theme.backgroundColor || "#f9fafb",
       }}
     >
       <div className="container mx-auto px-4">
-        <div className="text-center mb-16">
-          <motion.h2
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-4xl font-extrabold tracking-tight"
-            style={{ color: theme.textColor || "#111", fontFamily: theme.headingFont || "Inter, sans-serif" }}
-          >
-            Discover Powerful APIs
-          </motion.h2>
+        <div className="flex flex-col md:flex-row justify-between items-center mb-16">
+          <div className="max-w-xl mb-8 md:mb-0">
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              <Badge 
+                className="mb-4"
+                style={{
+                  backgroundColor: theme.accentColor || "#f97316",
+                  color: "#ffffff"
+                }}
+              >
+                Featured APIs
+              </Badge>
+              <h2
+                className="text-4xl font-extrabold tracking-tight mb-4"
+                style={{ 
+                  color: theme.textColor || "#111", 
+                  fontFamily: theme.headingFont || "Inter, sans-serif" 
+                }}
+              >
+                Discover Powerful APIs
+              </h2>
+            </motion.div>
 
-          <motion.p
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-lg text-gray-600 mt-4 max-w-2xl mx-auto mb-3"
+            <motion.p
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="text-lg mt-4 mb-3"
+              style={{ color: theme.textColor || "#4b5563", opacity: 0.8 }}
+            >
+              Build smarter and faster with our most trusted, high-performance APIs.
+              Integrate seamlessly and accelerate your development.
+            </motion.p>
+          </div>
+          
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
           >
-            Build smarter and faster with our most trusted, high-performance APIs.
-          </motion.p>
+            <Button
+              asChild
+              className="group flex items-center px-6 py-3 text-base font-medium shadow-md hover:shadow-lg transition-all"
+              style={{
+                backgroundColor: theme.buttonPrimaryColor || "#0070f3",
+                color: theme.buttonTextColor || "#ffffff",
+                borderRadius: theme.buttonBorderRadius || "0.375rem",
+              }}
+            >
+              <a href="/wso2">
+                View All APIs
+                <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+              </a>
+            </Button>
+          </motion.div>
         </div>
 
         {loading ? (
           <div className="flex justify-center items-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <Loader2 className="h-8 w-8 animate-spin" style={{ color: theme.primaryColor || "#0070f3" }} />
           </div>
         ) : error ? (
           <Alert variant="destructive" className="max-w-2xl mx-auto">
@@ -192,41 +233,19 @@ export function FeaturedAPIs() {
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
           >
             {visibleApis.map((api, index) => (
               <ApiCard key={api.id} api={api} index={index} onViewApi={handleViewApi} />
             ))}
           </motion.div>
         )}
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="mt-12 text-center"
-        >
-          <Button
-            asChild
-            className="mt-12 inline-flex items-center justify-center rounded-full px-6 py-3 text-base font-medium shadow-md transition hover:shadow-lg"
-            style={{
-              backgroundColor: theme.buttonPrimaryColor || "#0070f3",
-              color: theme.buttonTextColor || "#ffffff",
-              borderRadius: theme.buttonBorderRadius,
-            }}
-          >
-            <a href="/wso2">
-              View All APIs
-              <ChevronRight className="h-4 w-4 ml-2" />
-            </a>
-          </Button>
-        </motion.div>
       </div>
     </section>
   )
 }
 
-// Sample ApiCard component implementation
+// Enhanced ApiCard component implementation
 interface ApiCardProps {
   api: APIInfo
   index: number
@@ -238,6 +257,20 @@ export function ApiCard({ api, index, onViewApi }: ApiCardProps) {
 
   // Get the first letter of the API name for the fallback logo
   const firstLetter = api.name.charAt(0).toUpperCase()
+
+  // Get a colored icon based on API category or first tag
+  const getApiIcon = () => {
+    const category = api.categories?.[0]?.toLowerCase() || '';
+    const firstTag = api.tags?.[0]?.toLowerCase() || '';
+    
+    if (category.includes('finance') || firstTag.includes('payment') || firstTag.includes('banking')) {
+      return <Shield className="h-6 w-6" style={{ color: "#10b981" }} />
+    }
+    if (category.includes('data') || firstTag.includes('data')) {
+      return <Users className="h-6 w-6" style={{ color: "#6366f1" }} />
+    }
+    return <Code className="h-6 w-6" style={{ color: "#f97316" }} />
+  }
 
   // Card animation variants
   const cardVariants = {
@@ -255,64 +288,128 @@ export function ApiCard({ api, index, onViewApi }: ApiCardProps) {
   return (
     <motion.div
       variants={cardVariants}
-      className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
-      style={{
-        backgroundColor: theme.cardBackgroundColor || "#ffffff",
-      }}
+      whileHover={{ translateY: -8, transition: { duration: 0.3 } }}
+      className="group relative h-full"
     >
-      <div className="p-6">
-        <div className="flex items-center mb-4">
+      <div 
+        className="absolute inset-0 rounded-2xl bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        style={{ 
+          backgroundImage: `linear-gradient(135deg, ${theme.primaryColor || "#0070f3"}22, ${theme.accentColor || "#f97316"}1a)`,
+          borderRadius: theme.cardBorderRadius || "0.75rem",
+          transform: "translate(8px, 8px)",
+        }}
+      ></div>
+
+      <div 
+        className="relative h-full rounded-2xl p-6 flex flex-col transition-all"
+        style={{
+          backgroundColor: theme.cardBackgroundColor || "#ffffff",
+          borderRadius: theme.cardBorderRadius || "0.75rem",
+          boxShadow: theme.cardShadow || "0 2px 10px rgba(0,0,0,0.08)",
+          border: `1px solid ${theme.cardBorderColor || "rgba(0,0,0,0.05)"}`,
+        }}
+      >
+        {/* API Header with Icon/Image */}
+        <div className="flex items-center gap-4 mb-4">
           {api.hasThumbnail && api.thumbnailUrl ? (
             <img
               src={api.thumbnailUrl}
               alt={`${api.name} thumbnail`}
-              className="w-12 h-12 rounded-full object-cover"
+              className="w-14 h-14 rounded-xl object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.parentElement!.getElementsByClassName('fallback-icon')[0].classList.remove('hidden');
+              }}
             />
           ) : (
             <div
-              className="w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold"
+              className="fallback-icon w-14 h-14 rounded-xl flex items-center justify-center"
               style={{
-                backgroundColor: theme.buttonPrimaryColor || "#0070f3",
-                color: theme.buttonTextColor || "#ffffff",
-                fontFamily: theme.headingFont || "Inter, sans-serif",
+                backgroundColor: `${theme.primaryColor || "#0070f3"}15`,
               }}
             >
-              {firstLetter}
+              {getApiIcon()}
             </div>
           )}
-          <div className="ml-4">
+          
+          <div>
+            <div className="flex items-center">
+              {api.lifeCycleStatus && (
+                <Badge 
+                  className="text-xs px-2 py-0.5 mr-2"
+                  style={{
+                    backgroundColor: (api.lifeCycleStatus === "PUBLISHED") 
+                      ? (theme.successColor || "#10b981") 
+                      : (theme.warningColor || "#f59e0b"),
+                    color: "#ffffff"
+                  }}
+                >
+                  {api.lifeCycleStatus}
+                </Badge>
+              )}
+              {api.avgRating && (
+                <div className="flex items-center">
+                  <Star className="h-3.5 w-3.5 text-yellow-400 mr-1" />
+                  <span className="text-xs font-medium text-gray-600">{api.avgRating}</span>
+                </div>
+              )}
+            </div>
+            
             <h3
-              className="text-xl font-semibold"
-              style={{ color: theme.textColor || "#111" }}
+              className="text-xl font-semibold mt-1"
+              style={{ color: theme.textColor || "#111", fontFamily: theme.headingFont || "Inter, sans-serif" }}
             >
               {api.name}
             </h3>
-            <p className="text-sm text-gray-500">{api.version}</p>
+            <p className="text-sm opacity-70" style={{ color: theme.textColor || "#111" }}>
+              v{api.version} • {api.provider}
+            </p>
           </div>
         </div>
+        
+        {/* API Description */}
         <p
-          className="text-gray-600 mb-4 line-clamp-3"
+          className="text-base mb-4 flex-grow"
           style={{ color: theme.textSecondaryColor || "#4b5563" }}
         >
           {api.description}
         </p>
-        <div className="flex justify-between items-center">
-          <span
-            className="text-sm font-medium"
-            style={{ color: theme.textColor || "#111" }}
-          >
-            {api.avgRating} ★
-          </span>
+        
+        {/* Tags */}
+        {api.tags && api.tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-6">
+            {api.tags.slice(0, 3).map((tag) => (
+              <Badge 
+                key={tag} 
+                variant="outline"
+                className="text-xs"
+                style={{
+                  borderColor: `${theme.primaryColor || "#0070f3"}30`,
+                  color: theme.textColor || "#111",
+                }}
+              >
+                {tag}
+              </Badge>
+            ))}
+            {api.tags.length > 3 && (
+              <Badge variant="outline" className="text-xs">+{api.tags.length - 3}</Badge>
+            )}
+          </div>
+        )}
+        
+        {/* Action Button */}
+        <div className="mt-auto pt-4">
           <Button
-            variant="outline"
-            size="sm"
             onClick={() => onViewApi(api.id)}
+            className="w-full justify-center items-center group"
             style={{
-              borderColor: theme.buttonPrimaryColor || "#0070f3",
-              color: theme.buttonPrimaryColor || "#0070f3",
+              backgroundColor: theme.buttonPrimaryColor || "#0070f3",
+              color: theme.buttonTextColor || "#ffffff",
+              borderRadius: theme.buttonBorderRadius || "0.375rem",
             }}
           >
-            View API
+            View API Details
+            <ChevronRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
           </Button>
         </div>
       </div>

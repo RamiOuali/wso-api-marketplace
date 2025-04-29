@@ -251,28 +251,57 @@ export function WSO2ApiList({ baseUrl }: WSO2ApiListProps) {
   // Memoize the skeleton cards to prevent re-renders
   const skeletonCards = useMemo(() => {
     return Array.from({ length: 8 }).map((_, i) => (
-      <Card key={`skeleton-${i}`} className="overflow-hidden border-none shadow-sm">
-        <CardHeader className="pb-2">
-          <div className="flex items-start gap-3">
-            <Skeleton className="h-12 w-12 rounded-md" />
-            <div className="flex-1">
-              <Skeleton className="h-6 w-3/4 mb-2" />
-              <Skeleton className="h-4 w-1/2" />
+      <Card key={`skeleton-${i}`} className="overflow-hidden border shadow-sm">
+        <div className={cn(
+          "flex",
+          viewMode === 'list' ? "flex-row" : "flex-col"
+        )}>
+          {/* Thumbnail skeleton */}
+          <div className={cn(
+            "relative overflow-hidden bg-muted/30",
+            viewMode === 'list' 
+              ? "w-48 h-36 shrink-0" 
+              : "aspect-[4/3] w-full"
+          )}>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
+                <Skeleton className="h-10 w-10 rounded-full" />
+              </div>
+            </div>
+            {/* Version badge skeleton */}
+            <div className="absolute top-2 right-2">
+              <Skeleton className="h-5 w-10 rounded-full" />
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-4 w-full mb-2" />
-          <Skeleton className="h-4 w-5/6 mb-2" />
-          <Skeleton className="h-4 w-4/6" />
-        </CardContent>
-        <CardFooter className="flex justify-between pt-2">
-          <Skeleton className="h-8 w-20" />
-          <Skeleton className="h-8 w-20" />
-        </CardFooter>
+
+          {/* Content skeleton */}
+          <div className={cn(
+            "flex-1 p-4"
+          )}>
+            <div className="flex justify-between mb-3">
+              <div className="flex-1">
+                <Skeleton className="h-6 w-3/4 mb-2" />
+                <Skeleton className="h-4 w-1/3 mb-1" />
+              </div>
+              <Skeleton className="h-5 w-8 rounded-full" />
+            </div>
+            <Skeleton className="h-4 w-full mb-2" />
+            <Skeleton className="h-4 w-5/6 mb-4" />
+            
+            <div className="flex gap-1.5 mb-4">
+              <Skeleton className="h-5 w-16 rounded-full" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+            
+            <div className="flex justify-end mt-4">
+              <Skeleton className="h-8 w-28" />
+            </div>
+          </div>
+        </div>
       </Card>
     ))
-  }, [])
+  }, [viewMode])
 
   const ApiCard = ({ api, isSubscribed }: { api: APIInfo; isSubscribed: boolean }) => (
     <div className={cn(
@@ -281,44 +310,57 @@ export function WSO2ApiList({ baseUrl }: WSO2ApiListProps) {
     )}>
       {/* API Thumbnail with hover effect */}
       <div className={cn(
-        "relative overflow-hidden bg-gradient-to-br from-muted/50 to-muted", // Subtle gradient
-        viewMode === 'list' ? "w-40 h-auto shrink-0" : "h-40 w-full", // Adjusted list view thumbnail
-        "transition-all duration-300 group-hover:opacity-90"
+        "relative overflow-hidden", // Base styles
+        viewMode === 'list' 
+          ? "w-48 h-36 shrink-0" // Fixed dimensions for list view
+          : "aspect-[4/3] w-full", // Aspect ratio for grid view
+        "transition-all duration-300",
+        "border-r border-border/30" // Subtle separation in list view
       )}>
         {api.thumbnailUri ? (
           <motion.div
             initial={{ scale: 1 }}
-            whileHover={{ scale: 1.03 }}
-            transition={{ type: "spring", stiffness: 300, damping: 15 }}
+            whileHover={{ scale: 1.05 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
             className="w-full h-full"
           >
             {thumbnails[api.id] ? (
-              <img
-                src={thumbnails[api.id]}
-                alt={`${api.name} thumbnail`}
-                className="w-full h-full object-cover"
-              />
+              <div className="relative w-full h-full">
+                {/* Image with gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-background/50 to-transparent opacity-30 z-10" />
+                <img
+                  src={thumbnails[api.id]}
+                  alt={`${api.name} thumbnail`}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </div>
             ) : (
-              <div className="h-full w-full bg-muted flex items-center justify-center">
+              <div className="h-full w-full bg-muted/50 flex items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             )}
           </motion.div>
         ) : (
-          <motion.div 
-            className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted/50 to-muted"
-            whileHover={{ scale: 1.03 }}
-            transition={{ type: "spring", stiffness: 300, damping: 15 }}
-          >
-            <div className="text-5xl font-bold text-muted-foreground/40">
-              {api.name?.charAt(0)?.toUpperCase() || "A"}
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+            {/* Monogram fallback with subtle pattern background */}
+            <div 
+              className="relative w-20 h-20 rounded-full flex items-center justify-center bg-muted-foreground/10"
+              style={{
+                backgroundImage: "radial-gradient(circle at center, rgba(0,0,0,0.03) 0%, rgba(0,0,0,0) 70%)"
+              }}
+            >
+              <span className="text-4xl font-bold text-muted-foreground/50">
+                {api.name?.charAt(0)?.toUpperCase() || "A"}
+              </span>
             </div>
-          </motion.div>
+            <span className="mt-2 text-xs font-medium text-muted-foreground/70">No thumbnail</span>
+          </div>
         )}
 
         {/* Version Badge */}
         <div className="absolute top-2 right-2 z-10">
-          <Badge variant="secondary" className="bg-black/60 text-white backdrop-blur-sm text-xs px-2 py-0.5">
+          <Badge variant="secondary" className="bg-black/70 text-white backdrop-blur-sm text-xs px-2 py-0.5 font-medium">
             v{api.version}
           </Badge>
         </div>
@@ -416,7 +458,7 @@ export function WSO2ApiList({ baseUrl }: WSO2ApiListProps) {
             }}
           >
             <ExternalLink className="h-3.5 w-3.5" />
-            {isSubscribed ? "View API" : "View API"}
+            {isSubscribed ? "View API" : "View api details"}
           </Button>
         </div>
       </div>

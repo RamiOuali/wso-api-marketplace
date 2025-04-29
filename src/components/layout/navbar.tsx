@@ -95,7 +95,7 @@ export function Navbar() {
   const defaultTheme = {
     navItems: [
       { title: "Home", href: "/", isExternal: false },
-      { title: "APIs", href: "/apis", isExternal: false },
+      { title: "APIs", href: "/wso2", isExternal: false },
       { title: "Documentation", href: "/docs", isExternal: false },
     ],
     navbarShowUserMenu: true,
